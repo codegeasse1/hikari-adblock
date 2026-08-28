@@ -36,12 +36,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codegeasse1.hikariadblock.data.Blocklist
 import com.codegeasse1.hikariadblock.data.Preferences
 import com.codegeasse1.hikariadblock.data.QueryLog
+import com.codegeasse1.hikariadblock.vpn.RootHosts
 import com.codegeasse1.hikariadblock.vpn.VpnController
 
 @Composable
 fun HomeScreen(onToggle: (Boolean) -> Unit) {
     val context = LocalContext.current
-    val running by VpnController.running.collectAsStateWithLifecycle()
+    val vpnRunning by VpnController.running.collectAsStateWithLifecycle()
+    val rootActive by RootHosts.active.collectAsStateWithLifecycle()
+    val running = vpnRunning || rootActive
     val sessionTotal by QueryLog.totalSession.collectAsStateWithLifecycle()
     val sessionBlocked by QueryLog.blockedSession.collectAsStateWithLifecycle()
     val totals by Preferences.totalsFlow(context).collectAsStateWithLifecycle(initialValue = 0L to 0L)
@@ -102,7 +105,11 @@ fun HomeScreen(onToggle: (Boolean) -> Unit) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    if (running) "Blocking ads, trackers and malware" else "Tap the switch to start filtering",
+                    when {
+                        running && rootActive -> "Blocking via /etc/hosts (root mode)"
+                        running -> "Blocking ads, trackers and malware"
+                        else -> "Tap the switch to start filtering"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

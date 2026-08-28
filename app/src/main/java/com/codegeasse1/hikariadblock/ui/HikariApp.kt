@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 
 @Composable
-fun HikariApp(onToggle: (Boolean) -> Unit) {
+fun HikariApp(onToggle: (Boolean) -> Unit, onCheckUpdate: () -> Unit = {}) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     val items = listOf(
         TabSpec("Home", Icons.Filled.Shield),
@@ -49,7 +49,7 @@ fun HikariApp(onToggle: (Boolean) -> Unit) {
                 0 -> HomeScreen(onToggle)
                 1 -> LogsScreen()
                 2 -> FiltersScreen()
-                else -> SettingsScreen()
+                else -> SettingsScreen(onCheckUpdate)
             }
         }
     }

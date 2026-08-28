@@ -27,7 +27,9 @@ class HikariApp : Application() {
                     if (hours > 0) {
                         val last = Preferences.lastUpdateMillisOnce(this@HikariApp)
                         if (System.currentTimeMillis() - last >= hours * 3600_000L) {
-                            Blocklist.updateFromUrl(this@HikariApp, Preferences.DEFAULT_UPDATE_URL)
+                            val urls = listOf(Preferences.DEFAULT_UPDATE_URL) +
+                                Preferences.filterListsOnce(this@HikariApp)
+                            Blocklist.refreshFromUrls(this@HikariApp, urls)
                                 .onSuccess {
                                     Preferences.setLastUpdate(this@HikariApp, System.currentTimeMillis())
                                 }

@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -35,6 +34,8 @@ object Blocklist {
         val cleaned = set.map { it.trim().lowercase().trimEnd('.') }.filter { it.isNotEmpty() }.toHashSet()
         synchronized(domains) { customBlocked.clear(); customBlocked.addAll(cleaned) }
     }
+
+    fun allDomains(): Set<String> = synchronized(domains) { HashSet(domains) }
 
     fun isAllowed(host: String): Boolean {
         var d = host.trim().lowercase().trimEnd('.')
@@ -65,27 +66,38 @@ object Blocklist {
         return false
     }
 
-    fun loadIfNeeded(context: Context) {
+    suspend fun loadIfNeeded(context: Context) {
         if (isLoaded) return
         load(context)
     }
 
-    fun load(context: Context) {
-        val file = File(context.filesDir, "hosts.txt")
-        val input: InputStream? = if (file.exists() && file.length() > 0) file.inputStream() else context.assets.open("hosts.txt")
-        if (input == null) return
-        val loaded = HashSet<String>()
-        input.bufferedReader().useLines { lines ->
-            for (line in lines) {
-                val l = line.trim()
-                if (l.isEmpty() || l.startsWith("#")) continue
-                val parts = l.split(Regex("\\s+"))
-                val domain = parts.lastOrNull() ?: continue
-                val d = domain.lowercase().trimEnd('.')
-                if (d.isEmpty() || !domainRegex.matches(d)) continue
-                loaded.add(d)
+    suspend fun load(context: Context) = withContext(Dispatchers.IO) {
+        val files = listFiles(context).sorted()
+        if (files.isEmpty()) {
+            val text = runCatching { context.assets.open("hosts.txt").bufferedReader().use { it.readText() } }
+                .getOrNull()
+            if (text == null) return@withContext
+            runCatching { fileFor(context, Preferences.DEFAULT_UPDATE_URL).writeText(text) }
+            applyLoaded(parse(text))
+        } else {
+            val merged = HashSet<String>()
+            for (f in files) {
+                val text = runCatching { f.readText() }.getOrNull() ?: continue
+                merged.addAll(parse(text))
             }
+            applyLoaded(merged)
         }
+    }
+
+    fun fileFor(context: Context, url: String): File =
+        File(context.filesDir, "list_${url.hashCode().toUInt().toString(16)}.txt")
+
+    private fun listFiles(context: Context): List<File> =
+        runCatching {
+            context.filesDir.listFiles { _, name -> name.startsWith("list_") }?.toList() ?: emptyList()
+        }.getOrDefault(emptyList())
+
+    private fun applyLoaded(loaded: Set<String>) {
         synchronized(domains) {
             domains.clear()
             domains.addAll(loaded)
@@ -94,48 +106,75 @@ object Blocklist {
         isLoaded = true
     }
 
-    suspend fun updateFromUrl(context: Context, url: String, onStatus: (String) -> Unit = {}): Result<Int> =
+    suspend fun refreshFromUrls(context: Context, urls: List<String>, onStatus: (String) -> Unit = {}): Result<Int> =
         withContext(Dispatchers.IO) {
             try {
-                onStatus("Downloading…")
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 15000
-                conn.readTimeout = 60000
-                conn.instanceFollowRedirects = true
-                conn.setRequestProperty("User-Agent", "Hikari-AdBlock/1.0")
-                if (conn.responseCode !in 200..299) {
-                    return@withContext Result.failure(Exception("HTTP ${conn.responseCode}"))
+                val active = HashSet<String>()
+                val merged = HashSet<String>()
+                var fetched = 0
+                for (i in urls.indices) {
+                    val url = urls[i].trim()
+                    if (url.isEmpty()) continue
+                    onStatus("Downloading list ${i + 1}/${urls.size}…")
+                    val text = try {
+                        val conn = URL(url).openConnection() as HttpURLConnection
+                        conn.connectTimeout = 15000
+                        conn.readTimeout = 60000
+                        conn.instanceFollowRedirects = true
+                        conn.setRequestProperty("User-Agent", "Hikari-AdBlock/1.0")
+                        if (conn.responseCode !in 200..299) {
+                            null
+                        } else {
+                            conn.inputStream.bufferedReader().use { it.readText() }
+                        }
+                    } catch (_: Exception) {
+                        null
+                    } ?: continue
+                    val parsed = parse(text)
+                    if (parsed.size < 100) continue
+                    fetched++
+                    active.add(url)
+                    merged.addAll(parsed)
+                    runCatching { fileFor(context, url).writeText(text) }
                 }
-                val text = conn.inputStream.bufferedReader().use { it.readText() }
-                val parsed = parse(text)
-                if (parsed.size < 1000) {
-                    return@withContext Result.failure(Exception("Blocklist too small (${parsed.size} entries)"))
+                if (fetched == 0) {
+                    return@withContext Result.failure(Exception("Could not download any filter list"))
                 }
-                onStatus("Applying ${parsed.size} entries…")
-                synchronized(domains) {
-                    domains.clear()
-                    domains.addAll(parsed)
-                    _sizeFlow.value = domains.size
+                if (merged.size < 1000) {
+                    return@withContext Result.failure(Exception("Blocklist too small (${merged.size} entries)"))
                 }
-                runCatching { File(context.filesDir, "hosts.txt").writeText(text) }
-                isLoaded = true
-                Result.success(parsed.size)
+                val activeNames = active.map { fileFor(context, it).name }.toSet()
+                for (f in listFiles(context)) {
+                    if (f.name !in activeNames) {
+                        runCatching { f.delete() }
+                    }
+                }
+                onStatus("Applying ${merged.size} entries…")
+                applyLoaded(merged)
+                Result.success(merged.size)
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
 
-    fun parse(text: String): List<String> {
+    fun parse(text: String): Set<String> {
         val out = HashSet<String>()
-        val lineParts = Regex("\\s+")
+        val ws = Regex("\\s+")
         for (line in text.lineSequence()) {
             val l = line.trim()
             if (l.isEmpty() || l.startsWith("#")) continue
-            val m = Regex("^(?:0\\.0\\.0\\.0|127\\.0\\.0\\.1|::)\\s+([^\\s#]+)").find(l)
-            val domain = if (m != null) m.groupValues[1] else lineParts.split(l).firstOrNull() ?: continue
-            val d = domain.lowercase().trimEnd('.')
+            val parts = ws.split(l)
+            var candidate: String? = null
+            if (parts.size >= 2) {
+                val first = parts[0]
+                if (first == "0.0.0.0" || first == "127.0.0.1" || first == "::" || first == "::1") {
+                    candidate = parts[1]
+                }
+            }
+            if (candidate == null) candidate = parts[0]
+            val d = candidate.lowercase().trimEnd('.')
             if (d.isNotEmpty() && domainRegex.matches(d)) out.add(d)
         }
-        return out.toList()
+        return out
     }
 }

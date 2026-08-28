@@ -1,6 +1,5 @@
 package com.codegeasse1.hikariadblock.vpn
 
-import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
@@ -8,8 +7,8 @@ import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import com.codegeasse1.hikariadblock.data.Blocklist
+import com.codegeasse1.hikariadblock.data.Preferences
 import com.codegeasse1.hikariadblock.data.QueryLog
-import com.codegeasse1.hikariadblock.util.DnsServers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,6 +38,9 @@ class HikariVpnService : VpnService() {
     private val clients = HashMap<String, Client>()
     private val outputLock = Any()
 
+    @Volatile
+    private var customDns: String? = null
+
     private class Client(val socket: DatagramSocket) {
         @Volatile
         var lastUsed: Long = System.currentTimeMillis()
@@ -49,7 +51,7 @@ class HikariVpnService : VpnService() {
             startForegroundCompat()
             startInternal()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startForegroundCompat() {
@@ -63,32 +65,12 @@ class HikariVpnService : VpnService() {
     }
 
     private fun startInternal() {
-        val dnsServers = DnsServers.get(this)
-        if (dnsServers.isEmpty()) {
-            stopSelf()
-            return
-        }
         val builder = Builder()
         builder.setSession("Hikari AdBlock")
         builder.setMtu(1500)
         builder.addAddress("10.80.0.1", 32)
-        var anyRoute = false
-        for (dns in dnsServers) {
-            try {
-                if (dns.contains(":")) {
-                    builder.addRoute(dns, 128)
-                } else {
-                    builder.addRoute(dns, 32)
-                }
-                anyRoute = true
-            } catch (_: Exception) {
-                // skip unroutable addresses
-            }
-        }
-        if (!anyRoute) {
-            stopSelf()
-            return
-        }
+        builder.addRoute("0.0.0.0", 0)
+        runCatching { builder.addRoute("::", 0) }
         val fd = builder.establish()
         if (fd == null) {
             stopSelf()
@@ -98,6 +80,10 @@ class HikariVpnService : VpnService() {
         running = true
         VpnController.setRunning(true)
         scope.launch {
+            customDns = Preferences.customDnsOnce(this@HikariVpnService)
+                .split(',', ';')
+                .map { it.trim() }
+                .firstOrNull { it.isNotEmpty() }
             Blocklist.loadIfNeeded(this@HikariVpnService)
             startReadLoop(fd)
         }
@@ -136,39 +122,51 @@ class HikariVpnService : VpnService() {
         val version = (buf[0].toInt() and 0xF0) shr 4
         if (version == 4) {
             val hdr = PacketBuilder.parseIPv4Header(buf, 0, len) ?: return
-            if (hdr.protocol != 17) return
             val udpStart = hdr.ihl
-            if (len < udpStart + 8) return
-            val srcPort = ((buf[udpStart].toInt() and 0xFF) shl 8) or (buf[udpStart + 1].toInt() and 0xFF)
-            val dstPort = ((buf[udpStart + 2].toInt() and 0xFF) shl 8) or (buf[udpStart + 3].toInt() and 0xFF)
-            if (dstPort != 53) return
-            val payloadStart = udpStart + 8
-            val payloadLen = hdr.totalLen - payloadStart
-            if (payloadLen <= 0 || payloadStart + payloadLen > len) return
-            val srcIp = PacketBuilder.ipv4ToString(buf, 12)
-            val dstIp = PacketBuilder.ipv4ToString(buf, 16)
-            handleDns(
-                payload = buf.copyOfRange(payloadStart, payloadStart + payloadLen),
-                srcIp = srcIp, srcPort = srcPort, dstIp = dstIp,
-                srcBytes = hdr.src, dstBytes = hdr.dst, isV6 = false, output = output
-            )
+            if (hdr.protocol == 17 && len >= udpStart + 8) {
+                val srcPort = ((buf[udpStart].toInt() and 0xFF) shl 8) or (buf[udpStart + 1].toInt() and 0xFF)
+                val dstPort = ((buf[udpStart + 2].toInt() and 0xFF) shl 8) or (buf[udpStart + 3].toInt() and 0xFF)
+                if (dstPort == 53) {
+                    val payloadStart = udpStart + 8
+                    val payloadLen = hdr.totalLen - payloadStart
+                    if (payloadLen > 0 && payloadStart + payloadLen <= len) {
+                        handleDns(
+                            payload = buf.copyOfRange(payloadStart, payloadStart + payloadLen),
+                            srcIp = PacketBuilder.ipv4ToString(buf, 12), srcPort = srcPort,
+                            dstIp = PacketBuilder.ipv4ToString(buf, 16),
+                            srcBytes = hdr.src, dstBytes = hdr.dst, isV6 = false, output = output
+                        )
+                        return
+                    }
+                }
+            }
+            echo(buf, len, output)
         } else if (version == 6) {
             val hdr = PacketBuilder.parseIPv6Header(buf, 0, len) ?: return
             val udpStart = hdr.udpOffset
-            if (len < udpStart + 8) return
-            val srcPort = ((buf[udpStart].toInt() and 0xFF) shl 8) or (buf[udpStart + 1].toInt() and 0xFF)
-            val dstPort = ((buf[udpStart + 2].toInt() and 0xFF) shl 8) or (buf[udpStart + 3].toInt() and 0xFF)
-            if (dstPort != 53) return
-            val udpLen = ((buf[udpStart + 4].toInt() and 0xFF) shl 8) or (buf[udpStart + 5].toInt() and 0xFF)
-            val payloadLen = if (udpLen >= 8) udpLen - 8 else 0
-            if (payloadLen <= 0 || udpStart + 8 + payloadLen > len) return
-            handleDns(
-                payload = buf.copyOfRange(udpStart + 8, udpStart + 8 + payloadLen),
-                srcIp = PacketBuilder.ipv6ToString(buf, 8), srcPort = srcPort,
-                dstIp = PacketBuilder.ipv6ToString(buf, 24),
-                srcBytes = hdr.src, dstBytes = hdr.dst, isV6 = true, output = output
-            )
+            if (len >= udpStart + 8) {
+                val srcPort = ((buf[udpStart].toInt() and 0xFF) shl 8) or (buf[udpStart + 1].toInt() and 0xFF)
+                val dstPort = ((buf[udpStart + 2].toInt() and 0xFF) shl 8) or (buf[udpStart + 3].toInt() and 0xFF)
+                if (dstPort == 53) {
+                    val udpLen = ((buf[udpStart + 4].toInt() and 0xFF) shl 8) or (buf[udpStart + 5].toInt() and 0xFF)
+                    val payloadLen = if (udpLen >= 8) udpLen - 8 else 0
+                    if (payloadLen > 0 && udpStart + 8 + payloadLen <= len) {
+                        handleDns(
+                            payload = buf.copyOfRange(udpStart + 8, udpStart + 8 + payloadLen),
+                            srcIp = PacketBuilder.ipv6ToString(buf, 8), srcPort = srcPort,
+                            dstIp = PacketBuilder.ipv6ToString(buf, 24),
+                            srcBytes = hdr.src, dstBytes = hdr.dst, isV6 = true, output = output
+                        )
+                        return
+                    }
+                }
+            }
+            echo(buf, len, output)
         }
+    }
+
+    private fun echo(buf: ByteArray, len: Int, output: FileOutputStream) {
+        writePacket(buf.copyOfRange(0, len), output)
     }
 
     private fun handleDns(
@@ -192,9 +190,10 @@ class HikariVpnService : VpnService() {
     }
 
     private fun forward(payload: ByteArray, srcIp: String, srcPort: Int, dnsIp: String, isV6: Boolean, output: FileOutputStream) {
-        val key = "$srcIp:$srcPort->$dnsIp"
+        val target = customDns ?: dnsIp
+        val key = "$srcIp:$srcPort->$target"
         val client = synchronized(clients) {
-            clients.getOrPut(key) { createClient(srcIp, srcPort, dnsIp, isV6, output) }
+            clients.getOrPut(key) { createClient(srcIp, srcPort, dnsIp, target, isV6, output) }
         }
         client.lastUsed = System.currentTimeMillis()
         try {
@@ -204,13 +203,15 @@ class HikariVpnService : VpnService() {
         }
     }
 
-    private fun createClient(srcIp: String, srcPort: Int, dnsIp: String, isV6: Boolean, output: FileOutputStream): Client {
+    private fun createClient(srcIp: String, srcPort: Int, dnsIp: String, target: String, isV6: Boolean, output: FileOutputStream): Client {
         val socket = DatagramSocket()
         socket.setSoTimeout(15000)
         protect(socket)
-        socket.connect(InetAddress.getByName(dnsIp), 53)
+        val targetAddress = runCatching { InetAddress.getByName(target) }.getOrNull()
+            ?: InetAddress.getByName(dnsIp)
+        socket.connect(targetAddress, 53)
         val client = Client(socket)
-        val key = "$srcIp:$srcPort->$dnsIp"
+        val key = "$srcIp:$srcPort->$target"
         val srcBytes = InetAddress.getByName(srcIp).address
         val dstBytes = InetAddress.getByName(dnsIp).address
         Thread {

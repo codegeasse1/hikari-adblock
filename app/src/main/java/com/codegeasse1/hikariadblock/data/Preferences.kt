@@ -27,6 +27,9 @@ object Preferences {
     val customBlocked = stringSetPreferencesKey("custom_blocked")
     val totalBlocked = longPreferencesKey("total_blocked")
     val totalQueries = longPreferencesKey("total_queries")
+    val filterLists = stringSetPreferencesKey("filter_lists")
+    val customDns = stringPreferencesKey("custom_dns")
+    val rootMode = booleanPreferencesKey("root_mode")
 
     fun themeFlow(context: Context): Flow<String> = context.dataStore.data.map { it[theme] ?: "system" }
 
@@ -46,6 +49,12 @@ object Preferences {
         (it[totalQueries] ?: 0L) to (it[totalBlocked] ?: 0L)
     }
 
+    fun filterListsFlow(context: Context): Flow<Set<String>> = context.dataStore.data.map { it[filterLists] ?: emptySet() }
+
+    fun customDnsFlow(context: Context): Flow<String> = context.dataStore.data.map { it[customDns] ?: "" }
+
+    fun rootModeFlow(context: Context): Flow<Boolean> = context.dataStore.data.map { it[rootMode] ?: false }
+
     suspend fun setAutostart(context: Context, value: Boolean) = context.dataStore.edit { it[autostart] = value }
 
     suspend fun setTheme(context: Context, value: String) = context.dataStore.edit { it[theme] = value }
@@ -59,6 +68,12 @@ object Preferences {
     suspend fun setWhitelist(context: Context, set: Set<String>) = context.dataStore.edit { it[whitelist] = set }
 
     suspend fun setCustomBlocked(context: Context, set: Set<String>) = context.dataStore.edit { it[customBlocked] = set }
+
+    suspend fun setFilterLists(context: Context, set: Set<String>) = context.dataStore.edit { it[filterLists] = set }
+
+    suspend fun setCustomDns(context: Context, value: String) = context.dataStore.edit { it[customDns] = value }
+
+    suspend fun setRootMode(context: Context, value: Boolean) = context.dataStore.edit { it[rootMode] = value }
 
     suspend fun addTotals(context: Context, queries: Long, blocked: Long) = context.dataStore.edit { p ->
         p[totalQueries] = (p[totalQueries] ?: 0L) + queries
@@ -74,4 +89,10 @@ object Preferences {
     suspend fun autoUpdateHoursOnce(context: Context): Int = context.dataStore.data.first()[autoUpdateHours] ?: 0
 
     suspend fun lastUpdateMillisOnce(context: Context): Long = context.dataStore.data.first()[lastUpdateMillis] ?: 0L
+
+    suspend fun filterListsOnce(context: Context): Set<String> = context.dataStore.data.first()[filterLists] ?: emptySet()
+
+    suspend fun customDnsOnce(context: Context): String = context.dataStore.data.first()[customDns] ?: ""
+
+    suspend fun rootModeOnce(context: Context): Boolean = context.dataStore.data.first()[rootMode] ?: false
 }
