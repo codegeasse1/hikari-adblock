@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -27,11 +28,15 @@ import com.codegeasse1.hikariadblock.ui.theme.HikariAdBlockTheme
 import com.codegeasse1.hikariadblock.util.Updater
 import com.codegeasse1.hikariadblock.vpn.RootHosts
 import com.codegeasse1.hikariadblock.vpn.VpnController
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     private var updateVersion by mutableStateOf<String?>(null)
+    private var alwaysOnDialog by mutableStateOf(false)
+    private var stopCheckJob: Job? = null
 
     private val vpnPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -88,6 +93,26 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+            if (alwaysOnDialog) {
+                AlertDialog(
+                    onDismissRequest = { alwaysOnDialog = false },
+                    title = { Text("VPN won't stop") },
+                    text = {
+                        Text(
+                            "Hikari AdBlock keeps restarting — this usually means \"Always-on VPN\" is enabled for this app in system settings.\n\nOpen VPN settings and turn off \"Always-on VPN\" to be able to switch the blocker off."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            openVpnSettings()
+                            alwaysOnDialog = false
+                        }) { Text("Open VPN settings") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { alwaysOnDialog = false }) { Text("OK") }
+                    }
+                )
+            }
         }
     }
 
@@ -110,6 +135,7 @@ class MainActivity : ComponentActivity() {
 
     private fun toggle(on: Boolean) {
         if (on) {
+            stopCheckJob?.cancel()
             lifecycleScope.launch {
                 val useRoot = Preferences.rootModeOnce(this@MainActivity) && RootHosts.isRootAvailable()
                 if (useRoot) {
@@ -128,6 +154,22 @@ class MainActivity : ComponentActivity() {
                     RootHosts.restore(this@MainActivity)
                 }
             }
+            stopCheckJob?.cancel()
+            stopCheckJob = lifecycleScope.launch {
+                for (i in 0 until 40) {
+                    if (!VpnController.running.value) return@launch
+                    delay(100)
+                }
+                if (VpnController.running.value) {
+                    alwaysOnDialog = true
+                }
+            }
+        }
+    }
+
+    private fun openVpnSettings() {
+        runCatching {
+            startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
         }
     }
 

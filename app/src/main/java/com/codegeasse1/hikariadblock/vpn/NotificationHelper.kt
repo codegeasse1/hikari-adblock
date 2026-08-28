@@ -32,6 +32,14 @@ object NotificationHelper {
             .setContentTitle("Hikari AdBlock is active")
             .setContentText("Blocking ads, trackers and malware")
             .setContentIntent(pi)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Stop",
+                PendingIntent.getService(
+                    context, 1, Intent(context, HikariVpnService::class.java).setAction(HikariVpnService.ACTION_STOP),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            )
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()

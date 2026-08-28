@@ -26,6 +26,7 @@ class HikariVpnService : VpnService() {
 
     companion object {
         const val ACTION_START = "com.codegeasse1.hikariadblock.START"
+        const val ACTION_STOP = "com.codegeasse1.hikariadblock.STOP"
         const val NOTIF_ID = 1001
         @Volatile
         var running = false
@@ -47,6 +48,11 @@ class HikariVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (interfaceFd == null) {
             startForegroundCompat()
             startInternal()

@@ -35,6 +35,9 @@ object VpnController {
     }
 
     fun stop(context: Context) {
+        runCatching {
+            context.startService(Intent(context, HikariVpnService::class.java).setAction(HikariVpnService.ACTION_STOP))
+        }
         context.stopService(Intent(context, HikariVpnService::class.java))
     }
 }
