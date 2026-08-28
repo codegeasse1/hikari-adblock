@@ -47,7 +47,25 @@ jobs:
         run: chmod +x gradlew
 
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest
+        run: |
+          set +e
+          ./gradlew :app:testDebugUnitTest --console=plain 2>&1 | tee /tmp/test-output.log
+          rc=${PIPESTATUS[0]}
+          if [ $rc -ne 0 ]; then
+            while IFS= read -r line; do
+              if [[ "$line" =~ ^e:\ ([^:]+):([0-9]+):([0-9]+):\ (.*)$ ]]; then
+                f="${BASH_REMATCH[1]}"; f="${f#*/hikari-adblock/}"
+                echo "::error file=${f},line=${BASH_REMATCH[2]},col=${BASH_REMATCH[3]}::${BASH_REMATCH[4]}"
+              else
+                echo "::error::${line}"
+              fi
+            done < <(grep -E '^e: ' /tmp/test-output.log | head -30)
+            if ! grep -qE '^e: ' /tmp/test-output.log; then
+              tail -30 /tmp/test-output.log | while IFS= read -r line; do echo "::error::${line}"; done
+            fi
+            echo "::error::Gradle build failed (exit ${rc})"
+            exit $rc
+          fi
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug

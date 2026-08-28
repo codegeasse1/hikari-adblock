@@ -51,7 +51,7 @@ class DnsMessageTest {
         val r = DnsMessage.buildNxDomain(q)
         assertEquals(q[0], r[0])
         assertEquals(q[1], r[1])
-        assertEquals(0x81.toByte(), r[2]) // QR + RD
+        assertEquals(0x80.toByte(), r[2]) // QR, RD echoed (0 in this query)
         assertEquals(0x83.toByte(), r[3]) // RA + NXDOMAIN
         assertEquals("ads.doubleclick.net", DnsMessage.questionName(r, 0))
         assertEquals(0, r[7]) // ANCOUNT = 0
