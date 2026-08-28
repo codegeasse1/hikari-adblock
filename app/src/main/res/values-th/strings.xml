@@ -366,8 +366,6 @@
     <string name="home_security_threats">ภัยคุกคามที่ถูกบล็อก</string>
     <string name="filter_category_ad">การบล็อกโฆษณา</string>
     <string name="filter_category_security">ความปลอดภัย</string>
-    <string name="settings_sponsor">สนับสนุนเรา</string>
-    <string name="settings_sponsor_desc">สนับสนุนการพัฒนา Hikari AdBlock บน GitHub</string>
     <string name="settings_community">ชุมชน</string>
     <string name="settings_reddit_desc">เข้าร่วมชุมชนของเราบน Reddit</string>
     <string name="settings_telegram_desc">เข้าร่วมแชทของเราบน Telegram</string>

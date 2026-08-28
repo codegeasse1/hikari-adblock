@@ -316,8 +316,6 @@
     <string name="settings_reddit_desc">انضم إلى مجتمعنا على Reddit</string>
     <string name="settings_safe_search">البحث الآمن</string>
     <string name="settings_safe_search_desc">فرض البحث الآمن على محركات البحث المدعومة (Google, Bing)</string>
-    <string name="settings_sponsor">رعايتنا</string>
-    <string name="settings_sponsor_desc">ادعم تطوير Hikari AdBlock على GitHub</string>
     <string name="settings_telegram_desc">انضم إلى محادثتنا على Telegram</string>
     <string name="settings_theme">السمة</string>
     <string name="settings_theme_dark">داكن</string>

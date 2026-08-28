@@ -390,8 +390,6 @@ Desteklenen formatlar:
     <string name="firewall_schedule_minute_plus">Dak +</string>
     <string name="block_reason_firewall">Güvenlik Duvarı</string>
     <string name="settings_firewall">Güvenlik Duvarı</string>
-    <string name="settings_sponsor">Bize Sponsor Olun</string>
-    <string name="settings_sponsor_desc">GitHub\'da Hikari AdBlock gelişimini destekleyin</string>
     <string name="settings_community">Topluluk</string>
     <string name="settings_reddit_desc">Reddit topluluğumuza katılın</string>
     <string name="settings_telegram_desc">Telegram sohbetimize katılın</string>

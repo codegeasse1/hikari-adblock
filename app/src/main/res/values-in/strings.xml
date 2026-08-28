@@ -389,8 +389,6 @@
     <string name="block_reason_firewall">Firewall</string>
     <string name="block_reason_upstream_dns">DNS Hulu</string>
     <string name="settings_firewall">Firewall</string>
-    <string name="settings_sponsor">Sponsori Kami</string>
-    <string name="settings_sponsor_desc">Dukung pengembangan Hikari AdBlock di GitHub</string>
     <string name="settings_community">Komunitas</string>
     <string name="settings_reddit_desc">Bergabunglah dengan komunitas kami di Reddit</string>
     <string name="settings_telegram_desc">Bergabunglah dengan obrolan kami di Telegram</string>

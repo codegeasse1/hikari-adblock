@@ -11,8 +11,6 @@ import com.codegeasse1.hikariadblock.data.entities.RuleType
 import com.codegeasse1.hikariadblock.data.entities.toEntity
 import com.codegeasse1.hikariadblock.data.entities.toExport
 import com.codegeasse1.hikariadblock.data.repository.FilterListRepository
-import com.codegeasse1.hikariadblock.service.AdBlockVpnService
-import com.codegeasse1.hikariadblock.service.ServiceController
 import com.codegeasse1.hikariadblock.ui.customrules.data.ExportFormat
 import com.codegeasse1.hikariadblock.utils.CustomRuleParser
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +76,6 @@ class CustomRulesViewModel(
                     }
                     customDnsRuleDao.insert(parsedRule)
                     reloadFilters()
-                    ServiceController.requestRestart(application.applicationContext)
                     onSuccess()
                 } else {
                     onError("Invalid rule format")
@@ -119,7 +116,6 @@ class CustomRulesViewModel(
                     if (newRulesToInsert.isNotEmpty()) {
                         customDnsRuleDao.insertAll(newRulesToInsert)
                         reloadFilters()
-                        ServiceController.requestRestart(application.applicationContext)
                         onSuccess(newRulesToInsert.size)
                     } else if (parsedRules.size > newRulesToInsert.size) {
                          // All parsed rules were duplicates
@@ -172,7 +168,6 @@ class CustomRulesViewModel(
                 if (newRulesToInsert.isNotEmpty()) {
                     customDnsRuleDao.insertAll(newRulesToInsert)
                     reloadFilters()
-                    ServiceController.requestRestart(application.applicationContext)
                     onSuccess(newRulesToInsert.size)
                 } else {
                     onError("Rules already exist")
@@ -188,7 +183,6 @@ class CustomRulesViewModel(
             try {
                 customDnsRuleDao.delete(rule)
                 reloadFilters()
-                ServiceController.requestRestart(application.applicationContext)
             } catch (e: Exception) {
                 _error.value = e.message
             }
@@ -201,7 +195,6 @@ class CustomRulesViewModel(
                 val updatedRule = rule.copy(isEnabled = !rule.isEnabled)
                 customDnsRuleDao.update(updatedRule)
                 reloadFilters()
-                ServiceController.requestRestart(application.applicationContext)
             } catch (e: Exception) {
                 _error.value = e.message
             }
@@ -213,7 +206,6 @@ class CustomRulesViewModel(
             try {
                 customDnsRuleDao.deleteAll()
                 reloadFilters()
-                ServiceController.requestRestart(application.applicationContext)
             } catch (e: Exception) {
                 _error.value = e.message
             }

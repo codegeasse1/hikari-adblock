@@ -393,8 +393,6 @@
     <string name="block_reason_firewall">Pare-feu</string>
     <string name="block_reason_upstream_dns">DNS en amont</string>
     <string name="settings_firewall">Pare-feu</string>
-    <string name="settings_sponsor">Soutenez-nous</string>
-    <string name="settings_sponsor_desc">Soutenez le développement de Hikari AdBlock sur GitHub</string>
     <string name="settings_community">Communauté</string>
     <string name="settings_reddit_desc">Rejoignez notre communauté sur Reddit</string>
     <string name="settings_telegram_desc">Rejoignez notre discussion sur Telegram</string>

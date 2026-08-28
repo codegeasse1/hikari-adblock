@@ -371,8 +371,6 @@
     <string name="firewall_schedule_minute_plus">Phút +</string>
     <string name="block_reason_firewall">Tường lửa</string>
     <string name="settings_firewall">Tường lửa</string>
-    <string name="settings_sponsor">Tài trợ</string>
-    <string name="settings_sponsor_desc">Hỗ trợ phát triển Hikari AdBlock trên GitHub</string>
     <string name="settings_community">Cộng đồng</string>
     <string name="settings_reddit_desc">Tham gia cộng đồng trên Reddit</string>
     <string name="settings_telegram_desc">Tham gia nhóm chat trên Telegram</string>

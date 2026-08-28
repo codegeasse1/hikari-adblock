@@ -1,15 +1,12 @@
 package com.codegeasse1.hikariadblock.ui.whitelist
 
 import android.app.Application
-import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
-import com.codegeasse1.hikariadblock.service.AdBlockVpnService
-import com.codegeasse1.hikariadblock.service.ServiceController
 import com.codegeasse1.hikariadblock.ui.whitelist.data.AppInfoData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,7 +66,6 @@ class AppWhitelistViewModel(
     fun toggleApp(packageName: String) {
         viewModelScope.launch {
             appPrefs.toggleWhitelistedApp(packageName)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 }

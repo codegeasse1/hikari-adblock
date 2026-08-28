@@ -370,8 +370,6 @@
     <string name="firewall_schedule_minute_plus">Мин +</string>
     <string name="block_reason_firewall">Брандмауэр</string>
     <string name="settings_firewall">Брандмауэр</string>
-    <string name="settings_sponsor">Поддержать проект</string>
-    <string name="settings_sponsor_desc">Поддержите развитие Hikari AdBlock на GitHub</string>
     <string name="settings_community">Сообщество</string>
     <string name="settings_reddit_desc">Присоединяйтесь к сообществу на Reddit</string>
     <string name="settings_telegram_desc">Присоединяйтесь к чату в Telegram</string>

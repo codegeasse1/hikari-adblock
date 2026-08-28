@@ -365,8 +365,6 @@
     <string name="firewall_schedule_minute_plus">Min +</string>
     <string name="block_reason_firewall">Firewall</string>
     <string name="settings_firewall">Firewall</string>
-    <string name="settings_sponsor">Sostienici</string>
-    <string name="settings_sponsor_desc">Supporta lo sviluppo di Hikari AdBlock su GitHub</string>
     <string name="settings_community">Community</string>
     <string name="settings_reddit_desc">Unisciti alla nostra community su Reddit</string>
     <string name="settings_telegram_desc">Unisciti alla nostra chat su Telegram</string>

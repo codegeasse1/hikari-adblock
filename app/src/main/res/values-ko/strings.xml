@@ -359,8 +359,6 @@
     <string name="home_security_threats">차단된 위협</string>
     <string name="filter_category_ad">광고 차단</string>
     <string name="filter_category_security">보안</string>
-    <string name="settings_sponsor">스폰서 되기</string>
-    <string name="settings_sponsor_desc">GitHub에서 Hikari AdBlock 개발 지원하기</string>
     <string name="settings_community">커뮤니티</string>
     <string name="settings_reddit_desc">Reddit 커뮤니티에 참여하세요</string>
     <string name="settings_telegram_desc">Telegram 채팅에 참여하세요</string>

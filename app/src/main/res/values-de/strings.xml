@@ -390,8 +390,6 @@
     <string name="block_reason_firewall">Firewall</string>
     <string name="block_reason_upstream_dns">Upstream DNS</string>
     <string name="settings_firewall">Firewall</string>
-    <string name="settings_sponsor">Sponsern Sie uns</string>
-    <string name="settings_sponsor_desc">Unterstützen Sie die Entwicklung auf GitHub</string>
     <string name="settings_community">Community</string>
     <string name="settings_reddit_desc">Besuchen Sie uns auf Reddit</string>
     <string name="settings_telegram_desc">Chatten Sie mit uns auf Telegram</string>

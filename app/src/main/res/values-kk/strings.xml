@@ -407,8 +407,6 @@
     <string name="block_reason_firewall">Брандмауэр</string>
     <string name="block_reason_upstream_dns">Upstream DNS</string>
     <string name="settings_firewall">Брандмауэр</string>
-    <string name="settings_sponsor">Бізді қолдау</string>
-    <string name="settings_sponsor_desc">Hikari AdBlock әзірлеуін GitHub-та қолдаңыз</string>
     <string name="settings_community">Қауымдастық</string>
     <string name="settings_reddit_desc">Reddit-тегі қауымдастығымызға қосылыңыз</string>
     <string name="settings_telegram_desc">Telegram-дағы чатымызға қосылыңыз</string>

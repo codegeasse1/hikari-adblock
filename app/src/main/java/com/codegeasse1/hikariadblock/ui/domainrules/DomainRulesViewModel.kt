@@ -9,8 +9,6 @@ import com.codegeasse1.hikariadblock.data.dao.WhitelistDomainDao
 import com.codegeasse1.hikariadblock.data.entities.CustomDnsRule
 import com.codegeasse1.hikariadblock.data.entities.RuleType
 import com.codegeasse1.hikariadblock.data.entities.WhitelistDomain
-import com.codegeasse1.hikariadblock.service.AdBlockVpnService
-import com.codegeasse1.hikariadblock.service.ServiceController
 import com.codegeasse1.hikariadblock.ui.event.UiEvent
 import com.codegeasse1.hikariadblock.ui.event.toast
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -48,7 +46,6 @@ class DomainRulesViewModel(
                 if (exists == 0) {
                     whitelistDomainDao.insert(WhitelistDomain(domain = cleanDomain))
                     _events.toast(R.string.whitelist_domain_added, listOf(cleanDomain))
-                    requestVpnRestart()
                 } else {
                     _events.toast(R.string.filter_domain_already_whitelisted)
                 }
@@ -60,7 +57,6 @@ class DomainRulesViewModel(
         viewModelScope.launch {
             whitelistDomainDao.delete(domain)
             _events.toast(R.string.whitelist_domain_removed)
-            requestVpnRestart()
         }
     }
 
@@ -83,7 +79,6 @@ class DomainRulesViewModel(
                         )
                     )
                     _events.toast(R.string.blocklist_domain_added, listOf(cleanDomain))
-                    requestVpnRestart()
                 } else {
                     _events.toast(R.string.blocklist_domain_already_exists)
                 }
@@ -95,11 +90,6 @@ class DomainRulesViewModel(
         viewModelScope.launch {
             customDnsRuleDao.delete(rule)
             _events.toast(R.string.blocklist_domain_removed)
-            requestVpnRestart()
         }
-    }
-
-    private fun requestVpnRestart() {
-        ServiceController.requestRestart(getApplication<Application>().applicationContext)
     }
 }

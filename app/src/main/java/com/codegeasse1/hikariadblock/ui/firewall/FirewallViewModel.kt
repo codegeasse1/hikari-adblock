@@ -1,7 +1,6 @@
 package com.codegeasse1.hikariadblock.ui.firewall
 
 import android.app.Application
-import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
@@ -10,7 +9,6 @@ import androidx.lifecycle.viewModelScope
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 import com.codegeasse1.hikariadblock.data.entities.FirewallRule
 import com.codegeasse1.hikariadblock.data.dao.FirewallRuleDao
-import com.codegeasse1.hikariadblock.service.ServiceController
 import com.codegeasse1.hikariadblock.ui.whitelist.data.AppInfoData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,7 +74,6 @@ class FirewallViewModel(
     fun setFirewallEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appPrefs.setFirewallEnabled(enabled)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -90,21 +87,18 @@ class FirewallViewModel(
                     FirewallRule(packageName = packageName)
                 )
             }
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
     fun saveRule(rule: FirewallRule) {
         viewModelScope.launch {
             firewallRuleDao.insert(rule)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
     fun deleteRule(packageName: String) {
         viewModelScope.launch {
             firewallRuleDao.deleteByPackageName(packageName)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -114,7 +108,6 @@ class FirewallViewModel(
                 .filter { !it.isSystemApp }
                 .map { FirewallRule(packageName = it.packageName) }
             firewallRuleDao.insertAll(userPackages)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -124,7 +117,6 @@ class FirewallViewModel(
                 .filter { !it.isSystemApp }
                 .map { it.packageName }
             firewallRuleDao.deleteByPackageNames(userPackages)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -134,7 +126,6 @@ class FirewallViewModel(
                 .filter { it.isSystemApp }
                 .map { FirewallRule(packageName = it.packageName) }
             firewallRuleDao.insertAll(systemPackages)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 
@@ -144,7 +135,6 @@ class FirewallViewModel(
                 .filter { it.isSystemApp }
                 .map { it.packageName }
             firewallRuleDao.deleteByPackageNames(systemPackages)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 }

@@ -393,8 +393,6 @@
     <string name="block_reason_firewall">חומת אש</string>
     <string name="block_reason_upstream_dns">DNS ראשי</string>
     <string name="settings_firewall">חומת אש</string>
-    <string name="settings_sponsor">תמוך בנו (Sponsor)</string>
-    <string name="settings_sponsor_desc">תמוך בפיתוח של Hikari AdBlock ב-GitHub</string>
     <string name="settings_community">קהילה</string>
     <string name="settings_reddit_desc">הצטרף לקהילה שלנו ב-Reddit</string>
     <string name="settings_telegram_desc">הצטרף לצ\'אט שלנו ב-Telegram</string>

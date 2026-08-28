@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">Hikari AdBlock</string>
-    <string name="app_tagline">Ad-Free Browsing</string>
+    <string name="app_tagline">Peaceful Browsing</string>
     <string name="notification_channel_name">Ad Blocker Service</string>
     <string name="notification_channel_description">Shows when VPN ad blocker is active</string>
     <string name="vpn_notification_title">Hikari AdBlock is active</string>
@@ -37,7 +37,7 @@
     <string name="logs_empty">No DNS queries logged yet</string>
     <string name="logs_filter_all">All</string>
     <string name="logs_filter_blocked">Blocked</string>
-    <string name="onboarding_title_1">Block Ads Smartly</string>
+    <string name="onboarding_title_1">Quiet, Peaceful Browsing</string>
     <string name="onboarding_desc_1">Block ads across all apps and browsers with one tap. Uses DNS filtering technology — no root required.\n\n🔒 Privacy promise: We never collect, store, or transmit your browsing data. All processing happens on your device only.</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
@@ -436,8 +436,6 @@
     <string name="block_reason_firewall">Firewall</string>
     <string name="block_reason_upstream_dns">Upstream DNS</string>
     <string name="settings_firewall">Firewall</string>
-    <string name="settings_sponsor">Sponsor Us</string>
-    <string name="settings_sponsor_desc">Support Hikari AdBlock development on GitHub</string>
     <string name="settings_community">Community</string>
     <string name="settings_reddit_desc">Join our community on Reddit</string>
     <string name="settings_telegram_desc">Join our chat on Telegram</string>

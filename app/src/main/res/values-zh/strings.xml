@@ -360,8 +360,6 @@
     <string name="home_security_threats">已拦截威胁</string>
     <string name="filter_category_ad">广告拦截</string>
     <string name="filter_category_security">安全防护</string>
-    <string name="settings_sponsor">赞助我们</string>
-    <string name="settings_sponsor_desc">在 GitHub 上支持 Hikari AdBlock 的开发</string>
     <string name="settings_community">社区</string>
     <string name="settings_reddit_desc">加入我们的 Reddit 社区</string>
     <string name="settings_telegram_desc">加入我们的 Telegram 群聊</string>

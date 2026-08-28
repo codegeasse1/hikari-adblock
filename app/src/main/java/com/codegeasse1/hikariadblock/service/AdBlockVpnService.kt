@@ -24,6 +24,8 @@ import com.codegeasse1.hikariadblock.worker.VpnResumeWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.codegeasse1.hikariadblock.data.dao.DnsLogDao
+import com.codegeasse1.hikariadblock.data.dao.CustomDnsRuleDao
+import com.codegeasse1.hikariadblock.data.dao.WhitelistDomainDao
 import com.codegeasse1.hikariadblock.data.entities.DnsProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -200,7 +202,18 @@ class AdBlockVpnService : VpnService() {
     private lateinit var batteryMonitor: BatteryMonitor
     private lateinit var notificationHelper: NotificationHelper
     private var firewallManager: FirewallManager? = null
+
+    // Coalescing flags for the fast VPN re-establish triggered by app
+    // whitelist changes (kernel-level, so the tunnel must be rebuilt).
+    @Volatile
+    private var reestablishInProgress = false
+
+    @Volatile
+    private var reestablishPending = false
+
     private lateinit var firewallRuleDao: FirewallRuleDao
+    private lateinit var whitelistDomainDao: WhitelistDomainDao
+    private lateinit var customDnsRuleDao: CustomDnsRuleDao
     private lateinit var appNameResolver: AppNameResolver
     private var batteryMonitoringJob: Job? = null
     private var notificationUpdateJob: Job? = null
@@ -264,6 +277,8 @@ class AdBlockVpnService : VpnService() {
         )
 
         firewallRuleDao = koin.get()
+        whitelistDomainDao = koin.get()
+        customDnsRuleDao = koin.get()
         batteryMonitor = BatteryMonitor(this)
         notificationHelper = NotificationHelper(this, appPrefs)
 
@@ -294,6 +309,7 @@ class AdBlockVpnService : VpnService() {
                 }
             }
         )
+        observeLiveRuleChanges()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -357,6 +373,196 @@ class AdBlockVpnService : VpnService() {
             delay(RESTART_CLEANUP_DELAY_MS)
             startVpn()
         }
+    }
+
+    /**
+     * Live-refresh the Go engine's in-memory rule structures as soon as
+     * whitelist/blacklist/custom-rule/firewall/app-whitelist data changes,
+     * so edits take effect instantly — no VPN restart, no filter recompile,
+     * no phone restart.
+     *
+     * The Go engine's DomainChecker/FirewallChecker are Kotlin callbacks that
+     * read [FilterListRepository]'s and [FirewallManager]'s in-memory sets on
+     * every DNS query, so refreshing those sets is all that's needed.
+     */
+    private fun observeLiveRuleChanges() {
+        // Whitelist domain changes (add/remove) → live
+        serviceScope.launch {
+            whitelistDomainDao.getAll().collectLatest { filterRepo.loadWhitelist() }
+        }
+
+        // Custom block/allow rules (blocklist, custom rules screens) → live
+        serviceScope.launch {
+            customDnsRuleDao.getAllFlow().collectLatest { filterRepo.loadCustomRules() }
+        }
+
+        // Per-app firewall rule changes → live
+        serviceScope.launch {
+            firewallRuleDao.getAll().collectLatest { firewallManager?.loadRules() }
+        }
+
+        // Firewall master switch → create/destroy the FirewallManager live
+        serviceScope.launch {
+            appPrefs.firewallEnabled.collectLatest { enabled ->
+                if (enabled && _state.value == VpnState.RUNNING && firewallManager == null) {
+                    val fw = FirewallManager(this@AdBlockVpnService, firewallRuleDao)
+                    fw.loadRules()
+                    firewallManager = fw
+                    Timber.d("Firewall enabled while VPN running — rules loaded live")
+                } else if (!enabled) {
+                    firewallManager = null
+                }
+            }
+        }
+
+        // App whitelist is enforced by the kernel (VpnService.addDisallowedApplication),
+        // so the tunnel itself must be rebuilt — do it automatically and fast.
+        var lastApplied: Set<String>? = null
+        serviceScope.launch {
+            appPrefs.whitelistedApps.collectLatest { apps ->
+                if (lastApplied == null) {
+                    lastApplied = apps
+                    return@collectLatest
+                }
+                if (apps != lastApplied) {
+                    lastApplied = apps
+                    delay(400) // coalesce rapid toggles
+                    requestReestablish()
+                }
+            }
+        }
+    }
+
+    private fun requestReestablish() {
+        if (_state.value != VpnState.RUNNING) return
+        if (reestablishInProgress) {
+            reestablishPending = true
+            return
+        }
+        reestablishInProgress = true
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                doReestablish()
+            } catch (e: Exception) {
+                Timber.e(e, "Fast re-establish failed")
+            } finally {
+                reestablishInProgress = false
+                if (reestablishPending) {
+                    reestablishPending = false
+                    requestReestablish()
+                }
+            }
+        }
+    }
+
+    /**
+     * Fast silent tunnel rebuild applied when the app whitelist changes.
+     * Stops the Go engine, re-establishes the VPN with the new disallowed
+     * apps, and restarts the engine — WITHOUT reloading/recompiling filters,
+     * so it's near-instant (unlike a full [restartVpn]).
+     */
+    private suspend fun doReestablish() {
+        Timber.d("Re-establishing VPN tunnel for app whitelist change (no filter reload)")
+        goTunnelAdapter.stop()
+        try {
+            vpnInterface?.close()
+        } catch (e: Exception) {
+            Timber.e(e, "Error closing VPN interface during re-establish")
+        }
+        vpnInterface = null
+        delay(RESTART_CLEANUP_DELAY_MS)
+        val whitelistedApps = appPrefs.getWhitelistedAppsSnapshot()
+        if (!establishVpn(whitelistedApps)) {
+            Timber.e("Re-establish failed, falling back to full restart")
+            restartVpn()
+            return
+        }
+        startEngineForSession()
+    }
+
+    /**
+     * Restarts the Go engine on the current [vpnInterface] using the latest
+     * preference values. Mirrors the engine-start tail of [startVpn] but
+     * skips filter loading — used by [doReestablish]. Blocks the calling
+     * coroutine until the engine is stopped (same contract as [GoTunnelAdapter.start]).
+     */
+    private suspend fun startEngineForSession() {
+        val vpnFd = vpnInterface ?: return
+
+        val (
+            upstreamDns, fallbackDns, dnsResponseType, dnsProtocol,
+            dohUrl, whitelistedApps, safeSearchEnabled,
+            youtubeRestrictedMode, firewallEnabled, dnsProviderId
+        ) = coroutineScope {
+            val d1 = async { appPrefs.upstreamDns.first() }
+            val d2 = async { appPrefs.fallbackDns.first() }
+            val d3 = async { appPrefs.dnsResponseType.first() }
+            val d4 = async { appPrefs.dnsProtocol.first() }
+            val d5 = async { appPrefs.dohUrl.first() }
+            val d6 = async { appPrefs.getWhitelistedAppsSnapshot() }
+            val d7 = async { appPrefs.safeSearchEnabled.first() }
+            val d8 = async { appPrefs.youtubeRestrictedMode.first() }
+            val d9 = async { appPrefs.firewallEnabled.first() }
+            val d10 = async { appPrefs.dnsProviderId.first() }
+            PrefsSnapshot(
+                d1.await(), d2.await(), d3.await(), d4.await(),
+                d5.await(), d6.await(), d7.await(), d8.await(), d9.await(), d10.await()
+            )
+        }
+
+        var finalUpstreamDns = upstreamDns
+        var finalDnsProtocol = dnsProtocol.name
+
+        if (dnsProviderId == "system") {
+            val systemDnsList = getSystemDnsServers(this@AdBlockVpnService)
+            if (systemDnsList.isNotEmpty()) {
+                finalUpstreamDns = systemDnsList.first()
+            } else {
+                finalUpstreamDns = "8.8.8.8"
+            }
+            finalDnsProtocol = "PLAIN"
+        }
+
+        goTunnelAdapter.configureDns(
+            protocol = finalDnsProtocol,
+            primary = finalUpstreamDns,
+            fallback = fallbackDns,
+            dohUrl = dohUrl
+        )
+        goTunnelAdapter.setBlockResponseType(dnsResponseType)
+        goTunnelAdapter.configureSafeSearch(safeSearchEnabled, youtubeRestrictedMode)
+
+        val splitDnsZones = appPrefs.splitDnsZones.first()
+        goTunnelAdapter.setSplitDNSZones(splitDnsZones)
+
+        val routingMode = appPrefs.getRoutingModeSnapshot()
+        val wgConfigJson = if (routingMode == AppPreferences.ROUTING_MODE_WIREGUARD) {
+            resolvedWgConfigJson.ifEmpty { appPrefs.getWgConfigJsonSnapshot() ?: "" }
+        } else {
+            ""
+        }
+
+        val httpsFilteringEnabled = appPrefs.getHttpsFilteringEnabledSnapshot()
+        val selectedBrowsers = appPrefs.getSelectedBrowsersSnapshot()
+        val certDir = filesDir.absolutePath
+        val filterHttp3 = appPrefs.getFilterHttp3Snapshot()
+
+        goTunnelAdapter.start(
+            vpnInterface = vpnFd,
+            wgConfigJson = wgConfigJson,
+            httpsFilteringEnabled = httpsFilteringEnabled,
+            selectedBrowsers = selectedBrowsers,
+            certDir = certDir,
+            filterHttp3 = filterHttp3,
+            socketProtector = { fd ->
+                try {
+                    protect(fd)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to protect socket $fd")
+                    false
+                }
+            }
+        )
     }
 
     private fun startVpn(startedFromBoot: Boolean = false) {

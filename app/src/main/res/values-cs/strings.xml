@@ -320,8 +320,6 @@
     <string name="block_reason_firewall">Firewall</string>
     <string name="block_reason_upstream_dns">Upstream DNS</string>
     <string name="settings_firewall">Firewall</string>
-    <string name="settings_sponsor">Podpořte nás</string>
-    <string name="settings_sponsor_desc">Podpořte vývoj Hikari AdBlock na GitHubu</string>
     <string name="settings_community">Komunita</string>
     <string name="settings_reddit_desc">Připojte se k naší komunitě na Redditu</string>
     <string name="settings_telegram_desc">Připojte se k našemu chatu na Telegramu</string>

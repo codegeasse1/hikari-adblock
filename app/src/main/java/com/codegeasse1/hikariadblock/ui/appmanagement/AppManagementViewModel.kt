@@ -1,7 +1,6 @@
 package com.codegeasse1.hikariadblock.ui.appmanagement
 
 import android.app.Application
-import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
@@ -9,8 +8,6 @@ import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 import com.codegeasse1.hikariadblock.data.dao.DnsLogDao
-import com.codegeasse1.hikariadblock.service.AdBlockVpnService
-import com.codegeasse1.hikariadblock.service.ServiceController
 import com.codegeasse1.hikariadblock.ui.appmanagement.data.AppManagementData
 import com.codegeasse1.hikariadblock.ui.appmanagement.data.AppSortOption
 import kotlinx.coroutines.Dispatchers
@@ -120,7 +117,6 @@ class AppManagementViewModel(
     fun toggleApp(packageName: String) {
         viewModelScope.launch {
             appPrefs.toggleWhitelistedApp(packageName)
-            ServiceController.requestRestart(getApplication<Application>().applicationContext)
         }
     }
 

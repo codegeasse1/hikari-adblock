@@ -389,8 +389,6 @@
     <string name="block_reason_firewall">Брандмауер</string>
     <string name="block_reason_upstream_dns">Основний DNS</string>
     <string name="settings_firewall">Брандмауер (Файрвол)</string>
-    <string name="settings_sponsor">Спонсорувати нас</string>
-    <string name="settings_sponsor_desc">Підтримайте розробку Hikari AdBlock на GitHub</string>
     <string name="settings_community">Спільнота</string>
     <string name="settings_reddit_desc">Приєднуйтесь до нашої спільноти на Reddit</string>
     <string name="settings_telegram_desc">Приєднуйтесь до нашого чату в Telegram</string>

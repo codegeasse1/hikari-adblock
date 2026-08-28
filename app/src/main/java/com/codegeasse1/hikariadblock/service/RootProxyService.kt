@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.first
 import com.codegeasse1.hikariadblock.data.repository.FilterListRepository
 import com.codegeasse1.hikariadblock.data.dao.DnsLogDao
 import com.codegeasse1.hikariadblock.data.dao.FirewallRuleDao
+import com.codegeasse1.hikariadblock.data.dao.CustomDnsRuleDao
+import com.codegeasse1.hikariadblock.data.dao.WhitelistDomainDao
 import com.codegeasse1.hikariadblock.utils.AppNameResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import org.koin.java.KoinJavaComponent.getKoin
 import timber.log.Timber
 
@@ -109,6 +112,8 @@ class RootProxyService : Service() {
     private lateinit var filterRepo: FilterListRepository
     private lateinit var dnsLogDao: DnsLogDao
     private lateinit var firewallRuleDao: FirewallRuleDao
+    private lateinit var whitelistDomainDao: WhitelistDomainDao
+    private lateinit var customDnsRuleDao: CustomDnsRuleDao
     private lateinit var appNameResolver: AppNameResolver
     private lateinit var goTunnelAdapter: GoTunnelAdapter
     @Volatile
@@ -134,6 +139,8 @@ class RootProxyService : Service() {
         filterRepo = koin.get()
         dnsLogDao = koin.get()
         firewallRuleDao = koin.get()
+        whitelistDomainDao = koin.get()
+        customDnsRuleDao = koin.get()
 
         serviceScope.launch {
             appPrefs.recordDnsLogs.collect { enabled ->
@@ -151,7 +158,54 @@ class RootProxyService : Service() {
             firewallManagerProvider = { firewallManager },
             recordLogProvider = { isRecordDnsLogsEnabled },
         )
+        observeLiveRuleChanges()
         Timber.d("RootProxyService created")
+    }
+
+    /**
+     * Live-refresh the Go engine's in-memory rule structures when
+     * whitelist/blacklist/custom-rule/firewall/app-whitelist data changes,
+     * so edits apply instantly in Root Proxy mode too (no restart needed).
+     */
+    private fun observeLiveRuleChanges() {
+        serviceScope.launch {
+            whitelistDomainDao.getAll().collectLatest { filterRepo.loadWhitelist() }
+        }
+        serviceScope.launch {
+            customDnsRuleDao.getAllFlow().collectLatest { filterRepo.loadCustomRules() }
+        }
+        serviceScope.launch {
+            firewallRuleDao.getAll().collectLatest { firewallManager?.loadRules() }
+        }
+        serviceScope.launch {
+            appPrefs.firewallEnabled.collectLatest { enabled ->
+                if (enabled && _state.value == VpnState.RUNNING && firewallManager == null) {
+                    val fw = FirewallManager(this@RootProxyService, firewallRuleDao)
+                    fw.loadRules()
+                    firewallManager = fw
+                } else if (!enabled) {
+                    firewallManager = null
+                }
+            }
+        }
+        // App whitelist in Root mode is enforced by iptables UIDs — re-apply
+        // automatically on change with a proxy restart (no manual action).
+        var lastApplied: Set<String>? = null
+        serviceScope.launch {
+            appPrefs.whitelistedApps.collectLatest { apps ->
+                if (lastApplied == null) {
+                    lastApplied = apps
+                    return@collectLatest
+                }
+                if (apps != lastApplied) {
+                    lastApplied = apps
+                    delay(400)
+                    if (_state.value == VpnState.RUNNING) {
+                        restartProxy()
+                    }
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

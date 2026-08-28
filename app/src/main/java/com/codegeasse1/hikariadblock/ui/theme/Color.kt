@@ -8,8 +8,8 @@ val DarkSurface = Color(0xFF161B22)
 val DarkSurfaceVariant = Color(0xFF21262D)
 
 // Primary accent - Neon green for "protected" state
-val NeonGreen = Color(0xFF39D353)
-val NeonGreenDim = Color(0xFF238636)
+val NeonGreen = Color(0xFF4ADE80)
+val NeonGreenDim = Color(0xFF22C55E)
 
 // Danger accent - Red for "unprotected" state
 val DangerRed = Color(0xFFFF6B6B)
@@ -21,8 +21,8 @@ val AccentBlueDim = Color(0xFF388BFD)
 
 // Accent Color Palettes
 // Green (default - same as NeonGreen)
-val AccentGreen = Color(0xFF39D353)
-val AccentGreenDim = Color(0xFF238636)
+val AccentGreen = Color(0xFF4ADE80)
+val AccentGreenDim = Color(0xFF22C55E)
 
 // Blue preset
 val AccentBluePreset = Color(0xFF4285F4)

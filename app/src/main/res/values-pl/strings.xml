@@ -389,8 +389,6 @@
     <string name="block_reason_firewall">Firewall</string>
     <string name="block_reason_upstream_dns">Nadrzędny DNS</string>
     <string name="settings_firewall">Zapora (Firewall)</string>
-    <string name="settings_sponsor">Wesprzyj nas</string>
-    <string name="settings_sponsor_desc">Wesprzyj rozwój Hikari AdBlock na GitHubie</string>
     <string name="settings_community">Społeczność</string>
     <string name="settings_reddit_desc">Dołącz do naszej społeczności na Reddit</string>
     <string name="settings_telegram_desc">Dołącz do naszego czatu na Telegramie</string>
