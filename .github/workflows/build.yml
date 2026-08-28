@@ -18,6 +18,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build debug + release APKs
@@ -56,16 +59,22 @@ jobs:
               if [[ "$line" =~ ^e:\ ([^:]+):([0-9]+):([0-9]+):\ (.*)$ ]]; then
                 f="${BASH_REMATCH[1]}"; f="${f#*/hikari-adblock/}"
                 echo "::error file=${f},line=${BASH_REMATCH[2]},col=${BASH_REMATCH[3]}::${BASH_REMATCH[4]}"
-              else
-                echo "::error::${line}"
               fi
-            done < <(grep -E '^e: ' /tmp/test-output.log | head -30)
-            if ! grep -qE '^e: ' /tmp/test-output.log; then
-              tail -30 /tmp/test-output.log | while IFS= read -r line; do echo "::error::${line}"; done
-            fi
-            echo "::error::Gradle build failed (exit ${rc})"
+            done < <(grep -E '(^| )e: ' /tmp/test-output.log | head -10)
+            echo "::error::Gradle build failed (exit ${rc}) — full log on branch ci-logs"
             exit $rc
           fi
+
+      - name: Save test log on failure
+        if: failure()
+        run: |
+          cp /tmp/test-output.log test-output.log
+          git config user.name "hika-build"
+          git config user.email "actions@github.com"
+          git checkout --orphan ci-logs
+          git add test-output.log
+          git commit -m "test log $(date -u +%Y%m%d%H%M%S)" --allow-empty
+          git push -f origin ci-logs || true
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
