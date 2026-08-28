@@ -1,0 +1,8 @@
+package com.codegeasse1.hikariadblock.ui.whitelist.data
+
+data class AppInfoData(
+    val packageName: String,
+    val label: String,
+    val icon: android.graphics.drawable.Drawable,
+    val isSystemApp: Boolean = false
+)

@@ -1,52 +1,128 @@
 package com.codegeasse1.hikariadblock.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF3D5AFE),
+private val DarkColorScheme = darkColorScheme(
+    primary = NeonGreen,
+    onPrimary = Color.Black,
+    primaryContainer = NeonGreenDim,
+    onPrimaryContainer = Color.White,
+    secondary = AccentBlue,
+    onSecondary = Color.Black,
+    secondaryContainer = AccentBlueDim,
+    onSecondaryContainer = Color.White,
+    tertiary = DangerRed,
+    background = DarkBackground,
+    onBackground = TextPrimary,
+    surface = DarkSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = TextSecondary,
+    outline = TextTertiary,
+    error = DangerRed,
+    onError = Color.White
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = NeonGreenDim,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE0E2FF),
-    onPrimaryContainer = Color(0xFF00155B),
-    secondary = Color(0xFF5B5D72),
-    secondaryContainer = Color(0xFFE0E1F9),
-    onSecondaryContainer = Color(0xFF171B2C),
-    background = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF1B1B21),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF1B1B21),
-    surfaceVariant = Color(0xFFF1F1F4),
-    onSurfaceVariant = Color(0xFF46464F),
-    error = Color(0xFFB3261E)
+    primaryContainer = NeonGreen,
+    onPrimaryContainer = Color.Black,
+    secondary = AccentBlueDim,
+    onSecondary = Color.White,
+    secondaryContainer = AccentBlue,
+    onSecondaryContainer = Color.Black,
+    tertiary = DangerRedDim,
+    background = LightBackground,
+    onBackground = LightTextPrimary,
+    surface = LightSurface,
+    onSurface = LightTextPrimary,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightTextSecondary,
+    outline = LightTextSecondary,
+    error = DangerRedDim,
+    onError = Color.White
 )
 
-private val DarkColors = darkColorScheme(
-    primary = Color(0xFFBEC2FF),
-    onPrimary = Color(0xFF002782),
-    primaryContainer = Color(0xFF2746B6),
-    onPrimaryContainer = Color(0xFFDFE1FF),
-    secondary = Color(0xFFC2C5DC),
-    secondaryContainer = Color(0xFF23263A),
-    onSecondaryContainer = Color(0xFFDEE1F9),
-    background = Color(0xFF000000),
-    onBackground = Color(0xFFE6E1E9),
-    surface = Color(0xFF000000),
-    onSurface = Color(0xFFE6E1E9),
-    surfaceVariant = Color(0xFF1C1C1C),
-    onSurfaceVariant = Color(0xFFC7C5D0),
-    error = Color(0xFFFFB4AB)
-)
+/**
+ * Returns a pair of (primary, primaryDim) colors for the given accent color key.
+ */
+private fun getAccentColors(accentColor: String): Pair<Color, Color> {
+    return when {
+        accentColor == AppPreferences.ACCENT_BLUE -> AccentBluePreset to AccentBluePresetDim
+        accentColor == AppPreferences.ACCENT_PURPLE -> AccentPurple to AccentPurpleDim
+        accentColor == AppPreferences.ACCENT_ORANGE -> AccentOrange to AccentOrangeDim
+        accentColor == AppPreferences.ACCENT_PINK -> AccentPink to AccentPinkDim
+        accentColor == AppPreferences.ACCENT_TEAL -> AccentTeal to AccentTealDim
+        accentColor == AppPreferences.ACCENT_GREY -> AccentGrey to AccentGreyDim
+        accentColor.startsWith("custom_#") -> {
+            try {
+                val hex = accentColor.removePrefix("custom_")
+                val primary = Color(android.graphics.Color.parseColor(hex))
+                // Generate a dimmed variant by darkening the color ~20%
+                val hsv = FloatArray(3)
+                android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(hex), hsv)
+                hsv[2] = (hsv[2] * 0.8f).coerceIn(0f, 1f)
+                val dimmed = Color(android.graphics.Color.HSVToColor(hsv))
+                primary to dimmed
+            } catch (_: Exception) {
+                AccentGreen to AccentGreenDim
+            }
+        }
+        else -> AccentGreen to AccentGreenDim // default green
+    }
+}
 
 @Composable
-fun HikariAdBlockTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+fun HikariTheme(
+    themeMode: String = "system",
+    accentColor: String = AppPreferences.ACCENT_GREEN,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColors else LightColors
-    MaterialTheme(colorScheme = colorScheme, typography = Typography(), content = content)
+    val darkTheme = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
+    val colorScheme = when {
+        // Dynamic Color (Material You) — Android 12+
+        accentColor == AppPreferences.ACCENT_DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        // Preset or custom accent colors
+        accentColor != AppPreferences.ACCENT_GREEN && accentColor != AppPreferences.ACCENT_DYNAMIC -> {
+            val (primary, primaryDim) = getAccentColors(accentColor)
+            if (darkTheme) {
+                DarkColorScheme.copy(
+                    primary = primary,
+                    primaryContainer = primaryDim
+                )
+            } else {
+                LightColorScheme.copy(
+                    primary = primaryDim,
+                    primaryContainer = primary
+                )
+            }
+        }
+        // Default green
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
 }
