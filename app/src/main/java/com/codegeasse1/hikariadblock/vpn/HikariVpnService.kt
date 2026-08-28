@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -31,6 +32,13 @@ class HikariVpnService : VpnService() {
         @Volatile
         var running = false
             private set
+        @Volatile
+        var stopRequested = false
+            private set
+
+        fun requestStop() {
+            stopRequested = true
+        }
     }
 
     private var interfaceFd: ParcelFileDescriptor? = null
@@ -48,11 +56,14 @@ class HikariVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+        if (intent?.action == ACTION_STOP || stopRequested) {
+            stopRequested = false
+            teardown()
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return START_NOT_STICKY
         }
+        stopRequested = false
         if (interfaceFd == null) {
             startForegroundCompat()
             startInternal()
@@ -93,6 +104,30 @@ class HikariVpnService : VpnService() {
             Blocklist.loadIfNeeded(this@HikariVpnService)
             startReadLoop(fd)
         }
+        scope.launch {
+            while (!stopRequested && running) {
+                delay(100)
+            }
+            if (stopRequested) {
+                teardown()
+                runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+                stopSelf()
+            }
+        }
+    }
+
+    private fun teardown() {
+        running = false
+        VpnController.setRunning(false)
+        synchronized(clients) {
+            for (c in clients.values) {
+                runCatching { c.socket.close() }
+            }
+            clients.clear()
+        }
+        runCatching { readThread?.interrupt() }
+        runCatching { interfaceFd?.close() }
+        interfaceFd = null
     }
 
     private fun startReadLoop(fd: ParcelFileDescriptor) {
@@ -101,7 +136,7 @@ class HikariVpnService : VpnService() {
             val input = FileInputStream(fd.fileDescriptor)
             val output = FileOutputStream(fd.fileDescriptor)
             val buffer = ByteArray(65536)
-            while (running) {
+            while (running && !stopRequested) {
                 val n = try {
                     input.read(buffer)
                 } catch (e: IOException) {
@@ -272,22 +307,13 @@ class HikariVpnService : VpnService() {
     }
 
     override fun onRevoke() {
+        teardown()
         stopSelf()
     }
 
     override fun onDestroy() {
-        running = false
-        VpnController.setRunning(false)
+        teardown()
         scope.cancel()
-        synchronized(clients) {
-            for (c in clients.values) {
-                runCatching { c.socket.close() }
-            }
-            clients.clear()
-        }
-        runCatching { readThread?.interrupt() }
-        runCatching { interfaceFd?.close() }
-        interfaceFd = null
         super.onDestroy()
     }
 

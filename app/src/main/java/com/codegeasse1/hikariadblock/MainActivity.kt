@@ -99,17 +99,21 @@ class MainActivity : ComponentActivity() {
                     title = { Text("VPN won't stop") },
                     text = {
                         Text(
-                            "Hikari AdBlock keeps restarting — this usually means \"Always-on VPN\" is enabled for this app in system settings.\n\nOpen VPN settings and turn off \"Always-on VPN\" to be able to switch the blocker off."
+                            "Hikari AdBlock's VPN is still running even though you turned it off.\n\nTap \"Force stop\" to close the app so the VPN disconnects immediately — you can simply reopen the app afterwards."
                         )
                     },
                     confirmButton = {
                         TextButton(onClick = {
-                            openVpnSettings()
                             alwaysOnDialog = false
-                        }) { Text("Open VPN settings") }
+                            VpnController.stop(this@MainActivity)
+                            android.os.Process.killProcess(android.os.Process.myPid())
+                        }) { Text("Force stop") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { alwaysOnDialog = false }) { Text("OK") }
+                        TextButton(onClick = {
+                            alwaysOnDialog = false
+                            openVpnSettings()
+                        }) { Text("VPN settings") }
                     }
                 )
             }
@@ -156,11 +160,19 @@ class MainActivity : ComponentActivity() {
             }
             stopCheckJob?.cancel()
             stopCheckJob = lifecycleScope.launch {
-                for (i in 0 until 40) {
-                    if (!VpnController.running.value) return@launch
+                var stuck = true
+                for (i in 0 until 25) {
+                    if (!VpnController.running.value) { stuck = false; break }
                     delay(100)
                 }
-                if (VpnController.running.value) {
+                if (stuck) {
+                    VpnController.stop(this@MainActivity)
+                    for (i in 0 until 25) {
+                        if (!VpnController.running.value) { stuck = false; break }
+                        delay(100)
+                    }
+                }
+                if (stuck) {
                     alwaysOnDialog = true
                 }
             }

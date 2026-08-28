@@ -14,8 +14,8 @@ android {
         applicationId = "com.codegeasse1.hikariadblock"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
     }
 
     signingConfigs {
