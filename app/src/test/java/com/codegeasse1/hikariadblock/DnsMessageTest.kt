@@ -54,8 +54,8 @@ class DnsMessageTest {
         assertEquals(0x80.toByte(), r[2]) // QR, RD echoed (0 in this query)
         assertEquals(0x83.toByte(), r[3]) // RA + NXDOMAIN
         assertEquals("ads.doubleclick.net", DnsMessage.questionName(r, 0))
-        assertEquals(0, r[7]) // ANCOUNT = 0
-        assertEquals(1, r[5]) // QDCOUNT = 1
+        assertEquals(0.toByte(), r[7]) // ANCOUNT = 0
+        assertEquals(1.toByte(), r[5]) // QDCOUNT = 1
     }
 
     @Test

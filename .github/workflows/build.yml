@@ -68,7 +68,15 @@ jobs:
       - name: Save test log on failure
         if: failure()
         run: |
-          cp /tmp/test-output.log test-output.log
+          {
+            cat /tmp/test-output.log
+            echo ""
+            echo "===== TEST RESULTS XML ====="
+            cat app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null || true
+            echo ""
+            echo "===== REPORT FILES ====="
+            find app/build/reports/tests -type f 2>/dev/null | head -20
+          } > test-output.log
           git config user.name "hika-build"
           git config user.email "actions@github.com"
           git checkout --orphan ci-logs
