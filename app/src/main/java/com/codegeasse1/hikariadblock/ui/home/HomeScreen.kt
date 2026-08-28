@@ -1,0 +1,703 @@
+package com.codegeasse1.hikariadblock.ui.home
+
+import android.graphics.drawable.Drawable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.DataSaverOn
+import androidx.compose.material.icons.filled.GppGood
+import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.codegeasse1.hikariadblock.R
+import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
+import com.codegeasse1.hikariadblock.data.repository.FilterListRepository
+import com.codegeasse1.hikariadblock.ui.home.component.DailyStatsChart
+import com.codegeasse1.hikariadblock.ui.home.component.HomeAppBar
+import com.codegeasse1.hikariadblock.ui.home.component.PowerButton
+import com.codegeasse1.hikariadblock.ui.home.component.StatCard
+import com.codegeasse1.hikariadblock.ui.home.component.StatsChart
+import com.codegeasse1.hikariadblock.ui.theme.AccentBlue
+import com.codegeasse1.hikariadblock.ui.theme.DangerRed
+import com.codegeasse1.hikariadblock.ui.theme.SecurityOrange
+import com.codegeasse1.hikariadblock.ui.theme.TextSecondary
+import com.codegeasse1.hikariadblock.utils.AppConstants.AVG_AD_SIZE_KB
+import com.codegeasse1.hikariadblock.utils.VpnUtils
+import com.codegeasse1.hikariadblock.utils.formatCount
+import com.codegeasse1.hikariadblock.utils.formatDataSize
+import com.codegeasse1.hikariadblock.utils.formatTimeSince
+import com.codegeasse1.hikariadblock.utils.formatUptimeShort
+import com.codegeasse1.hikariadblock.utils.profileIcon
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import org.koin.androidx.compose.koinViewModel
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    onShowVpnConflictDialog: () -> Unit = {},
+    onRequestVpnPermission: () -> Unit,
+    viewModel: HomeViewModel = koinViewModel(),
+    onNavigateToStatisticsScreen: () -> Unit = {},
+    onNavigateToLogScreen: () -> Unit = {},
+    onNavigateToProfileScreen: () -> Unit = {},
+) {
+    val vpnEnabled by viewModel.vpnEnabled.collectAsStateWithLifecycle()
+    val vpnConnecting by viewModel.vpnConnecting.collectAsStateWithLifecycle()
+    val vpnStopping by viewModel.vpnStopping.collectAsStateWithLifecycle()
+    val blockedCount by viewModel.blockedCount.collectAsStateWithLifecycle()
+    val domainCount by viewModel.domainCount.collectAsStateWithLifecycle()
+    val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
+    val securityThreatsBlocked by viewModel.securityThreatsBlocked.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val filterLoadFailed by viewModel.filterLoadFailed.collectAsStateWithLifecycle()
+    val recentBlocked by viewModel.recentBlocked.collectAsStateWithLifecycle()
+    val hourlyStats by viewModel.hourlyStats.collectAsStateWithLifecycle()
+    val dailyStats by viewModel.dailyStats.collectAsStateWithLifecycle()
+    val topBlockedDomains by viewModel.topBlockedDomains.collectAsStateWithLifecycle()
+    val protectionUptimeMs by viewModel.protectionUptimeMs.collectAsStateWithLifecycle()
+    val activeProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
+    val securityFilterIds by viewModel.securityFilterIds.collectAsStateWithLifecycle()
+    val routingMode by viewModel.routingMode.collectAsStateWithLifecycle()
+    val privateDnsWarning by viewModel.privateDnsWarning.collectAsStateWithLifecycle()
+    val pausedByTrusted by viewModel.pausedByTrusted.collectAsStateWithLifecycle()
+    val pausedTrustedSsid by viewModel.pausedTrustedSsid.collectAsStateWithLifecycle()
+    // Show the trusted-network paused state only while actually off.
+    val showTrustedPause = pausedByTrusted && !vpnEnabled && !vpnConnecting && !vpnStopping
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.preloadFilter()
+    }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            HomeAppBar(
+                isLoading = isLoading,
+                filterLoadFailed = filterLoadFailed,
+                viewModel = viewModel,
+                onNavigateToStatisticsScreen = onNavigateToStatisticsScreen,
+                onNavigateToLogScreen = onNavigateToLogScreen
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Private DNS warning — DoT bypasses Hikari AdBlock filtering (#145)
+            if (privateDnsWarning) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = stringResource(R.string.private_dns_warning_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = stringResource(R.string.private_dns_warning_text),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Status text
+            Text(
+                text = when {
+                    vpnStopping -> stringResource(R.string.status_disconnecting)
+                    vpnConnecting -> stringResource(R.string.status_connecting)
+                    vpnEnabled -> stringResource(R.string.status_protected)
+                    showTrustedPause -> stringResource(R.string.status_paused)
+                    else -> stringResource(R.string.status_unprotected)
+                },
+                style = MaterialTheme.typography.headlineMedium,
+                color = when {
+                    vpnStopping -> SecurityOrange
+                    vpnConnecting -> AccentBlue
+                    vpnEnabled -> MaterialTheme.colorScheme.primary
+                    showTrustedPause -> SecurityOrange
+                    else -> DangerRed
+                },
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val isRootMode = routingMode == AppPreferences.ROUTING_MODE_ROOT
+            Text(
+                text = when {
+                    vpnStopping -> stringResource(if (isRootMode) R.string.home_disconnecting_desc_root else R.string.home_disconnecting_desc)
+                    vpnConnecting -> stringResource(if (isRootMode) R.string.home_connecting_desc_root else R.string.home_connecting_desc)
+                    vpnEnabled -> stringResource(R.string.home_protected_desc)
+                    showTrustedPause -> stringResource(R.string.home_paused_trusted_short)
+                    else -> stringResource(R.string.home_unprotected_desc)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (showTrustedPause) {
+                // Trusted-network pill: shows which Wi-Fi paused Hikari AdBlock.
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Wifi,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = pausedTrustedSsid.ifEmpty { stringResource(R.string.trusted_networks_paused_title) },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = when (routingMode) {
+                            AppPreferences.ROUTING_MODE_ROOT -> "Root Proxy Mode"
+                            AppPreferences.ROUTING_MODE_WIREGUARD -> "WireGuard Mode"
+                            else -> "Local VPN Mode"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onNavigateToProfileScreen,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = profileIcon(activeProfile?.profileType),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = activeProfile?.name ?: stringResource(R.string.profile_name_default),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.ic_edit),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val haptic = LocalHapticFeedback.current
+            val isFirstVpnChange = remember { mutableStateOf(true) }
+            LaunchedEffect(vpnEnabled) {
+                if (isFirstVpnChange.value) {
+                    isFirstVpnChange.value = false
+                } else {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+            }
+
+            // Power button — never blocked by filter loading
+            PowerButton(
+                isActive = vpnEnabled,
+                isConnecting = vpnConnecting || vpnStopping,
+                onClick = {
+                    if (!vpnConnecting && !vpnStopping) {
+                        if (vpnEnabled) {
+                            viewModel.stopVpn(context)
+                        } else {
+                            if (!isRootMode && VpnUtils.isOtherVpnActive(context)) {
+                                onShowVpnConflictDialog()
+                            } else {
+                                onRequestVpnPermission()
+                            }
+                        }
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+
+            // Stats cards
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StatCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    icon = Icons.Default.QueryStats,
+                    label = stringResource(R.string.total_queries),
+                    value = formatCount(totalCount),
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                StatCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    icon = Icons.Default.Block,
+                    label = stringResource(R.string.blocked_queries),
+                    value = formatCount(blockedCount),
+                    color = DangerRed
+                )
+                StatCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    icon = Icons.Default.GppGood,
+                    label = stringResource(R.string.home_security_threats),
+                    value = formatCount(securityThreatsBlocked),
+                    color = SecurityOrange
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Block rate + Data saved + Uptime card
+            val blockRate = if (totalCount > 0) (blockedCount * 100f / totalCount) else 0f
+            val dataSavedKb = blockedCount * AVG_AD_SIZE_KB
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = stringResource(R.string.home_block_rate),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.home_block_rate),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "${String.format(androidx.compose.ui.text.intl.Locale.current.platformLocale, "%.1f", blockRate)}%",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.home_filter_rules),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = formatCount(domainCount),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Data saved + Protection uptime row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StatCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    icon = Icons.Default.DataSaverOn,
+                    label = stringResource(R.string.home_data_saved),
+                    value = formatDataSize(dataSavedKb),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                StatCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    icon = Icons.Default.Timer,
+                    label = stringResource(R.string.home_protection_uptime),
+                    value = formatUptimeShort(protectionUptimeMs),
+                    color = AccentBlue
+                )
+            }
+
+            // Activity Chart with time range selector
+            if (hourlyStats.isNotEmpty() || dailyStats.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                var selectedChartTab by rememberSaveable { mutableIntStateOf(0) }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedChartTab == 0,
+                        onClick = { selectedChartTab = 0 },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.home_chart_24h),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AccentBlue.copy(alpha = 0.2f),
+                            selectedLabelColor = AccentBlue
+                        )
+                    )
+                    FilterChip(
+                        selected = selectedChartTab == 1,
+                        onClick = { selectedChartTab = 1 },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.home_chart_7d),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AccentBlue.copy(alpha = 0.2f),
+                            selectedLabelColor = AccentBlue
+                        )
+                    )
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    when (selectedChartTab) {
+                        0 -> {
+                            if (hourlyStats.isNotEmpty()) {
+                                StatsChart(
+                                    stats = hourlyStats,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp)
+                                        .padding(16.dp)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.home_chart_no_data),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                        }
+
+                        1 -> {
+                            if (dailyStats.isNotEmpty()) {
+                                DailyStatsChart(
+                                    stats = dailyStats,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp)
+                                        .padding(16.dp)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.home_chart_no_data),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Top blocked domains
+            if (topBlockedDomains.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = stringResource(R.string.home_top_blocked),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, bottom = 8.dp)
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        topBlockedDomains.forEachIndexed { index, entry ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${index + 1}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.width(24.dp)
+                                )
+                                Text(
+                                    text = entry.domain,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = formatCount(entry.count),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DangerRed,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Recent blocked domains
+            if (recentBlocked.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = stringResource(R.string.home_recent_blocked),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, bottom = 8.dp)
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        recentBlocked.forEach { entry ->
+                            val blockedByIds = entry.blockedBy.split(",")
+                            val dotColor =
+                                if (blockedByIds.any { it == FilterListRepository.BLOCK_REASON_SECURITY || securityFilterIds.contains(it) })
+                                    SecurityOrange else DangerRed
+                            val recentAppIcon: Drawable? = remember(entry.packageName) {
+                                if (entry.packageName.isNotEmpty() && entry.packageName.contains(".")) {
+                                    try {
+                                        context.packageManager.getApplicationIcon(entry.packageName)
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                } else null
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (recentAppIcon != null) {
+                                    Image(
+                                        painter = rememberDrawablePainter(drawable = recentAppIcon),
+                                        contentDescription = entry.appName,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(dotColor)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = entry.domain,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (entry.appName.isNotEmpty()) {
+                                        Text(
+                                            text = entry.appName,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = formatTimeSince(entry.timestamp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(200.dp))
+        }
+
+    }
+}

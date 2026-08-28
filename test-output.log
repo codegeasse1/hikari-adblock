@@ -1,0 +1,83 @@
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+Starting a Gradle Daemon, 1 incompatible and 1 stopped Daemons could not be reused, use --status for details
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:checkDebugAarMetadata
+> Task :app:processDebugNavigationResources
+> Task :app:compileDebugNavigationResources
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:javaPreCompileDebug
+> Task :app:processDebugManifestForPackage
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_reddit_desc without required default value.
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_telegram_desc without required default value.
+
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_reddit_desc without required default value.
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_telegram_desc without required default value.
+
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_reddit_desc without required default value.
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_telegram_desc without required default value.
+
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_reddit_desc without required default value.
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_telegram_desc without required default value.
+
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_reddit_desc without required default value.
+warn: removing resource com.codegeasse1.hikariadblock.debug:string/settings_telegram_desc without required default value.
+
+> Task :app:processDebugResources
+> Task :app:kspDebugKotlin
+
+> Task :app:compileDebugKotlin FAILED
+w: ATTENTION!
+This build uses unsafe internal compiler arguments:
+
+-XXLanguage:+PropertyParamAnnotationDefaultTargetMode
+
+This mode is not recommended for production use,
+as no stability/compatibility guarantees are given on
+compiler or generated code. Use it at your own risk!
+
+e: file:///home/runner/work/hikari-adblock/hikari-adblock/app/src/main/java/com/codegeasse1/hikariadblock/ui/settings/component/CommunitySection.kt:43:37 Unresolved reference 'padding'.
+e: file:///home/runner/work/hikari-adblock/hikari-adblock/app/src/main/java/com/codegeasse1/hikariadblock/ui/settings/component/CommunitySection.kt:43:61 Unresolved reference 'dp'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 35s
+20 actionable tasks: 20 executed
+
+===== TEST RESULTS XML =====
+
+===== REPORT FILES =====
