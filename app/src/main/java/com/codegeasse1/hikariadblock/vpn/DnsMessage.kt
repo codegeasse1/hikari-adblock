@@ -64,9 +64,9 @@ object DnsMessage {
         val resp = ByteArray(12 + (qEnd - 12))
         query.copyInto(resp, 0, 0, qEnd)
         resp[2] = (0x80 or (query[2].toInt() and 0x01)).toByte()
-        resp[3] = 0x83
-        resp[4] = 0; resp[5] = 1
-        for (i in 6..11) resp[i] = 0
+        resp[3] = 0x83.toByte()
+        resp[4] = 0.toByte(); resp[5] = 1.toByte()
+        for (i in 6..11) resp[i] = 0.toByte()
         return resp
     }
 }

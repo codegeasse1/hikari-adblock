@@ -13,17 +13,17 @@ class DnsMessageTest {
         for (p in parts) len += 1 + p.length
         len += 1 + 4
         val b = ByteArray(len)
-        b[5] = 1 // QDCOUNT = 1
+        b[5] = 1.toByte() // QDCOUNT = 1
         var pos = 12
         for (p in parts) {
             b[pos] = p.length.toByte()
             for (i in p.indices) b[pos + 1 + i] = p[i].code.toByte()
             pos += 1 + p.length
         }
-        b[pos] = 0
+        b[pos] = 0.toByte()
         pos++
-        b[pos] = 0; b[pos + 1] = 1 // QTYPE A
-        b[pos + 2] = 0; b[pos + 3] = 1 // QCLASS IN
+        b[pos] = 0.toByte(); b[pos + 1] = 1.toByte() // QTYPE A
+        b[pos + 2] = 0.toByte(); b[pos + 3] = 1.toByte() // QCLASS IN
         return b
     }
 
@@ -47,7 +47,7 @@ class DnsMessageTest {
     @Test
     fun nxDomainEchoesIdAndQuestion() {
         val q = buildQuery("ads.doubleclick.net")
-        q[0] = 0x12; q[1] = 0x34
+        q[0] = 0x12.toByte(); q[1] = 0x34.toByte()
         val r = DnsMessage.buildNxDomain(q)
         assertEquals(q[0], r[0])
         assertEquals(q[1], r[1])

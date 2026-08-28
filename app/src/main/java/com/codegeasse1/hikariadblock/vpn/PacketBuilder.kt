@@ -67,10 +67,10 @@ object PacketBuilder {
     fun ipv4Packet(src: ByteArray, srcPort: Int, dst: ByteArray, dstPort: Int, payload: ByteArray): ByteArray {
         val totalLen = 20 + 8 + payload.size
         val p = ByteArray(totalLen)
-        p[0] = 0x45
+        p[0] = 0x45.toByte()
         p[2] = (totalLen shr 8).toByte(); p[3] = (totalLen and 0xFF).toByte()
-        p[8] = 64
-        p[9] = 17
+        p[8] = 64.toByte()
+        p[9] = 17.toByte()
         src.copyInto(p, 12)
         dst.copyInto(p, 16)
         val udpStart = 20
@@ -89,10 +89,10 @@ object PacketBuilder {
     fun ipv6Packet(src: ByteArray, srcPort: Int, dst: ByteArray, dstPort: Int, payload: ByteArray): ByteArray {
         val udpLen = 8 + payload.size
         val p = ByteArray(40 + udpLen)
-        p[0] = 0x60
+        p[0] = 0x60.toByte()
         p[4] = (udpLen shr 8).toByte(); p[5] = (udpLen and 0xFF).toByte()
-        p[6] = 17
-        p[7] = 64
+        p[6] = 17.toByte()
+        p[7] = 64.toByte()
         src.copyInto(p, 8)
         dst.copyInto(p, 24)
         val udpStart = 40
