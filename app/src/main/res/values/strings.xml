@@ -439,6 +439,8 @@
     <string name="settings_sponsor">Sponsor Us</string>
     <string name="settings_sponsor_desc">Support Hikari AdBlock development on GitHub</string>
     <string name="settings_community">Community</string>
+    <string name="settings_reddit_desc">Join our community on Reddit</string>
+    <string name="settings_telegram_desc">Join our chat on Telegram</string>
     <string name="settings_github" translatable="false">GitHub</string>
     <string name="settings_github_desc">Source code, releases and issue tracker</string>
     <string name="filter_setup_active_count">%1$d active</string>
