@@ -105,6 +105,9 @@ class SettingsViewModel(
     val youtubeRestrictedMode: StateFlow<Boolean> = appPrefs.youtubeRestrictedMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val youtubeAdBlockEnabled: StateFlow<Boolean> = appPrefs.youtubeAdBlockEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val dailySummaryEnabled: StateFlow<Boolean> = appPrefs.dailySummaryEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -260,6 +263,14 @@ class SettingsViewModel(
         viewModelScope.launch {
             appPrefs.setYoutubeRestrictedMode(enabled)
             requestVpnRestart()
+        }
+    }
+
+    fun setYoutubeAdBlockEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appPrefs.setYoutubeAdBlockEnabled(enabled)
+            // Applied instantly to the engine's in-memory rule set — no restart.
+            filterRepo.setYoutubeAdBlocking(enabled)
         }
     }
 

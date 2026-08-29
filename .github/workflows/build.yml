@@ -133,22 +133,13 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Generate signing keystore
-        run: |
-          keytool -genkeypair -v -keystore release.jks -storepass "$KS_PASS" \
-            -keypass "$KS_PASS" -alias hikari -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Hikari AdBlock, O=codegeasse1, C=US"
-          echo "RELEASE_KEYSTORE_B64=$(base64 -w0 release.jks)" >> "$GITHUB_ENV"
-        env:
-          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD || 'hikari-adblock-ci' }}
-
       - name: Build signed release APK
         run: ./gradlew :app:assembleRelease
         env:
-          RELEASE_KEYSTORE_B64: ${{ env.RELEASE_KEYSTORE_B64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'hikari-adblock-ci' }}
-          RELEASE_KEY_ALIAS: hikari
-          RELEASE_KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'hikari-adblock-ci' }}
+          RELEASE_KEYSTORE_B64: ${{ secrets.SIGNING_KEY }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug

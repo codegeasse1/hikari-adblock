@@ -591,6 +591,7 @@ class AdBlockVpnService : VpnService() {
                 // This ensures they are immediately available for the Go engine.
                 filterRepo.loadWhitelist()
                 filterRepo.loadCustomRules()
+                filterRepo.setYoutubeAdBlocking(appPrefs.youtubeAdBlockEnabled.first())
 
                 filterRepo.seedDefaultsIfNeeded()
                 filterRepo.fetchAndSyncRemoteFilterLists()

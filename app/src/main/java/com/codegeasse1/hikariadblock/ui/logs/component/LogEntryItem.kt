@@ -253,6 +253,8 @@ fun LogEntryItem(
                             stringResource(R.string.block_reason_custom_rule) to WhitelistAmber
                         com.codegeasse1.hikariadblock.data.repository.FilterListRepository.BLOCK_REASON_FIREWALL -> 
                             stringResource(R.string.block_reason_firewall) to MaterialTheme.colorScheme.primary
+                        com.codegeasse1.hikariadblock.data.repository.FilterListRepository.BLOCK_REASON_YOUTUBE_ADS -> 
+                            stringResource(R.string.block_reason_youtube_ads) to com.codegeasse1.hikariadblock.ui.theme.NeonGreen
                         com.codegeasse1.hikariadblock.data.repository.FilterListRepository.BLOCK_REASON_UPSTREAM_DNS, "UPSTREAM_DNS" -> 
                             stringResource(R.string.block_reason_upstream_dns) to com.codegeasse1.hikariadblock.ui.theme.UpstreamDnsPurple
                         else -> {
@@ -319,5 +321,4 @@ fun LogEntryItem(
         }
     }
 }
-
 

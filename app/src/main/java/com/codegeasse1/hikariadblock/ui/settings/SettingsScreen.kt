@@ -74,6 +74,7 @@ fun SettingsScreen(
     val safeSearchEnabled by viewModel.safeSearchEnabled.collectAsStateWithLifecycle()
 
     val youtubeRestrictedMode by viewModel.youtubeRestrictedMode.collectAsStateWithLifecycle()
+    val youtubeAdBlockEnabled by viewModel.youtubeAdBlockEnabled.collectAsStateWithLifecycle()
     val dailySummaryEnabled by viewModel.dailySummaryEnabled.collectAsStateWithLifecycle()
     val milestoneNotificationsEnabled by viewModel.milestoneNotificationsEnabled.collectAsStateWithLifecycle()
     val upstreamDNS by viewModel.upstreamDns.collectAsStateWithLifecycle()
@@ -122,6 +123,7 @@ fun SettingsScreen(
                 networkSwitchDelaySec = networkSwitchDelaySec,
                 safeSearchEnabled = safeSearchEnabled,
                 youtubeRestrictedMode = youtubeRestrictedMode,
+                youtubeAdBlockEnabled = youtubeAdBlockEnabled,
 
                 dnsResponseType = dnsResponseType,
                 upstreamDNS = upstreamDNS,
@@ -132,6 +134,7 @@ fun SettingsScreen(
                 onSetNetworkSwitchDelaySec = { viewModel.setNetworkSwitchDelaySec(it) },
                 onSetSafeSearchEnabled = { viewModel.setSafeSearchEnabled(it) },
                 onSetYoutubeRestrictedMode = { viewModel.setYoutubeRestrictedMode(it) },
+                onSetYoutubeAdBlockEnabled = { viewModel.setYoutubeAdBlockEnabled(it) },
                 onShowDnsResponseTypeDialog = { showDnsResponseTypeDialog = true },
                 onNavigateToDNSProvider = onNavigateToDNSProvider,
                 onNavigateToWireGuardImport = onNavigateToWireGuardImport,

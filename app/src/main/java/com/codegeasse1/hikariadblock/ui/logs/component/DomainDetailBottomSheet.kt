@@ -195,6 +195,8 @@ fun DomainDetailBottomSheet(
                                 stringResource(R.string.block_reason_security)
                             FilterListRepository.BLOCK_REASON_FIREWALL ->
                                 stringResource(R.string.block_reason_firewall)
+                            FilterListRepository.BLOCK_REASON_YOUTUBE_ADS ->
+                                stringResource(R.string.block_reason_youtube_ads)
                             FilterListRepository.BLOCK_REASON_UPSTREAM_DNS.uppercase() ->
                                 stringResource(R.string.block_reason_upstream_dns)
                             else -> {

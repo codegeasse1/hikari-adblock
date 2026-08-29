@@ -194,6 +194,8 @@
     <string name="settings_safe_search_desc">Force safe search on supported search engines (Google, Bing)</string>
     <string name="settings_youtube_restricted">YouTube Restricted Mode</string>
     <string name="settings_youtube_restricted_desc">Filter out mature videos on YouTube, block embedded mature videos on other sites, and hide all comments</string>
+    <string name="settings_youtube_ad_block">Block YouTube Ads</string>
+    <string name="settings_youtube_ad_block_desc">Blocks YouTube\'s ad network (ads, overlays, tracking) like a browser ad blocker</string>
     <string name="settings_fallback_dns">Fallback DNS Server</string>
     <string name="settings_fallback_dns_placeholder" translatable="false">1.1.1.1</string>
     <string name="settings_fallback_dns_desc">Fallback DNS is used when your primary DNS server fails. Enter the IP address of a backup DNS server.</string>
@@ -435,6 +437,7 @@
     <string name="firewall_schedule_minute_plus">Min +</string>
     <string name="block_reason_firewall">Firewall</string>
     <string name="block_reason_upstream_dns">Upstream DNS</string>
+    <string name="block_reason_youtube_ads">YouTube Ads</string>
     <string name="settings_firewall">Firewall</string>
     <string name="settings_community">Community</string>
     <string name="settings_reddit_desc">Join our community on Reddit</string>

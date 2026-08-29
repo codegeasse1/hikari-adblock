@@ -37,6 +37,7 @@ class FilterListRepository(
         const val BLOCK_REASON_SECURITY = "SECURITY"
         const val BLOCK_REASON_FIREWALL = "FIREWALL"
         const val BLOCK_REASON_UPSTREAM_DNS = "upstream_dns"
+        const val BLOCK_REASON_YOUTUBE_ADS = "YOUTUBE_ADS"
 
         private const val FILTER_LIST_JSON_URL =
             "https://raw.githubusercontent.com/pass-with-high-score/blockads-default-filter/refs/heads/main/output/filter_lists.json"
@@ -64,6 +65,38 @@ class FilterListRepository(
     private val whitelistedDomains = ConcurrentHashMap.newKeySet<String>()
     private val customBlockDomains = ConcurrentHashMap.newKeySet<String>()
     private val customAllowDomains = ConcurrentHashMap.newKeySet<String>()
+    private val youtubeAdDomains = ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * Curated DNS-level YouTube ad blocklist. These are the ad-decision,
+     * ad-creative and ad-tracking endpoints YouTube's ad pipeline resolves:
+     * blocking them makes the ad system unable to serve/fetch ads (the same
+     * technique as the classic hosts-file YouTube ad blocks). googlevideo.com
+     * is deliberately NOT included — it also carries the actual video content.
+     * Parent-domain matching in [checkDomainAndParents] covers all subdomains
+     * of these networks (e.g. googleads.g.doubleclick.net).
+     */
+    private val YOUTUBE_AD_DOMAINS = listOf(
+        "doubleclick.net",
+        "googlesyndication.com",
+        "adservice.google.com",
+        "ads.youtube.com",
+        "s.youtube.com"
+    )
+
+    /**
+     * Instantly enable/disable YouTube ad blocking. Edits the in-memory set
+     * directly so the change takes effect on the very next DNS query — no
+     * restart, no filter recompile, no phone restart.
+     */
+    fun setYoutubeAdBlocking(enabled: Boolean) {
+        if (enabled) {
+            youtubeAdDomains.addAll(YOUTUBE_AD_DOMAINS)
+        } else {
+            youtubeAdDomains.clear()
+        }
+        Timber.d("YouTube ad blocking ${if (enabled) "ENABLED" else "disabled"} (${youtubeAdDomains.size} domains)")
+    }
 
     private val _domainCountFlow = MutableStateFlow(0)
     val domainCountFlow: StateFlow<Int> = _domainCountFlow.asStateFlow()
@@ -101,6 +134,7 @@ class FilterListRepository(
     fun isBlocked(domain: String): Boolean {
         if (checkDomainAndParents(domain) { customAllowDomains.contains(it) }) return false
         if (checkDomainAndParents(domain) { customBlockDomains.contains(it) }) return true
+        if (checkDomainAndParents(domain) { youtubeAdDomains.contains(it) }) return true
         if (checkDomainAndParents(domain) { whitelistedDomains.contains(it) }) return false
         return false
     }
@@ -109,12 +143,14 @@ class FilterListRepository(
         if (checkDomainAndParents(domain) { customAllowDomains.contains(it) }) return 0L
         if (checkDomainAndParents(domain) { whitelistedDomains.contains(it) }) return 0L
         if (checkDomainAndParents(domain) { customBlockDomains.contains(it) }) return 1L
+        if (checkDomainAndParents(domain) { youtubeAdDomains.contains(it) }) return 1L
         return -1L
     }
 
     fun getBlockReason(domain: String): String {
         if (checkDomainAndParents(domain) { customAllowDomains.contains(it) }) return ""
         if (checkDomainAndParents(domain) { customBlockDomains.contains(it) }) return BLOCK_REASON_CUSTOM_RULE
+        if (checkDomainAndParents(domain) { youtubeAdDomains.contains(it) }) return BLOCK_REASON_YOUTUBE_ADS
         if (checkDomainAndParents(domain) { whitelistedDomains.contains(it) }) return ""
         return ""
     }

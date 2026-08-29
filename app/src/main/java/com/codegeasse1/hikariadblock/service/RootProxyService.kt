@@ -254,6 +254,7 @@ class RootProxyService : Service() {
                 // 1. Load filters (same as VPN mode)
                 filterRepo.loadWhitelist()
                 filterRepo.loadCustomRules()
+                filterRepo.setYoutubeAdBlocking(appPrefs.youtubeAdBlockEnabled.first())
                 filterRepo.seedDefaultsIfNeeded()
                 filterRepo.fetchAndSyncRemoteFilterLists()
                 val result = filterRepo.loadAllEnabledFilters()

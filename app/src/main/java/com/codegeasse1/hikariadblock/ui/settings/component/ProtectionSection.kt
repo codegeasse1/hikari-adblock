@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.OndemandVideo
+import androidx.compose.material.icons.filled.PlayDisabled
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Search
@@ -44,6 +45,7 @@ fun ProtectionSection(
     networkSwitchDelaySec: Int,
     safeSearchEnabled: Boolean,
     youtubeRestrictedMode: Boolean,
+    youtubeAdBlockEnabled: Boolean,
 
     dnsResponseType: String,
     upstreamDNS: String,
@@ -54,6 +56,7 @@ fun ProtectionSection(
     onSetSafeSearchEnabled: (Boolean) -> Unit,
 
     onSetYoutubeRestrictedMode: (Boolean) -> Unit,
+    onSetYoutubeAdBlockEnabled: (Boolean) -> Unit,
     onShowDnsResponseTypeDialog: () -> Unit,
     onNavigateToDNSProvider: () -> Unit,
     onNavigateToWireGuardImport: () -> Unit,
@@ -157,6 +160,18 @@ fun ProtectionSection(
                     subtitle = stringResource(R.string.settings_youtube_restricted_desc),
                     isChecked = youtubeRestrictedMode,
                     onCheckedChange = onSetYoutubeRestrictedMode
+                )
+                // YouTube Ad Block
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                )
+                SettingsToggleItem(
+                    icon = Icons.Default.PlayDisabled,
+                    title = stringResource(R.string.settings_youtube_ad_block),
+                    subtitle = stringResource(R.string.settings_youtube_ad_block_desc),
+                    isChecked = youtubeAdBlockEnabled,
+                    onCheckedChange = onSetYoutubeAdBlockEnabled
                 )
                 // DNS Response Type
                 HorizontalDivider(
