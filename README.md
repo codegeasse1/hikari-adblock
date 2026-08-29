@@ -14,10 +14,34 @@
 
 ---
 
-## Download
+## 📥 Download
 
-Grab the latest APK from the [Releases](https://github.com/codegeasse1/hikari-adblock/releases)
-page. Every push to `main` is built automatically by GitHub Actions; manual releases are signed.
+<div align="center">
+
+**Grab the latest APK — one click:**
+
+[![Download](https://img.shields.io/badge/Download-Hikari%20AdBlock%20APK-brightgreen?style=for-the-badge&logo=android)](https://github.com/codegeasse1/hikari-adblock/releases/latest)
+
+</div>
+
+New here? Head to the **[Releases page](https://github.com/codegeasse1/hikari-adblock/releases)** and download
+**`app-universal-release.apk`** (works on every phone — if you don't know your CPU, pick this one).
+On most modern phones `app-arm64-v8a-release.apk` is a smaller download.
+
+> ⚠️ **Before installing an update**, uninstall the older Hikari AdBlock first (each release is
+> signed with its own key, and Android will refuse to overwrite a different signature).
+
+## Changelog
+
+See the full, per-version changelog on the [Releases page](https://github.com/codegeasse1/hikari-adblock/releases).
+
+Highlights:
+
+* **v1.1.0** — New **Block YouTube Ads** toggle (Settings → Protection) that blocks YouTube's ad
+  network instantly, no restart. Releases are now signed with a stable keystore.
+* **v1.0.1** — Green launcher icon, "Sponsor us" row removed, refreshed UI colors/wording, and
+  **instant** whitelist / blacklist / app-whitelist (no more restarts or filter updates to apply a change).
+* **v1.0.0** — Initial release.
 
 ## Features
 
