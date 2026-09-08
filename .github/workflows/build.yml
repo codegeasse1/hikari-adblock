@@ -145,9 +145,6 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
-
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -167,6 +164,5 @@ jobs:
             > signing keys cannot overwrite each other.
           files: |
             app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
           draft: false
           prerelease: false
