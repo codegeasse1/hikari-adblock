@@ -235,13 +235,16 @@ class MainActivity : ComponentActivity() {
                     // First-time grant — request it, then start once granted
                     ShizukuManager.requestPermission { granted ->
                         if (granted) {
-                            withContext(Dispatchers.Main) {
+                            lifecycleScope.launch(Dispatchers.IO) {
                                 ShizukuProxyService.start(this@MainActivity)
                             }
                         } else {
-                            appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
-                            withContext(Dispatchers.Main) {
-                                requestVpnPermission()
+                            // Permission denied — fallback to Direct mode and request VPN permission
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+                                withContext(Dispatchers.Main) {
+                                    requestVpnPermission()
+                                }
                             }
                         }
                     }
