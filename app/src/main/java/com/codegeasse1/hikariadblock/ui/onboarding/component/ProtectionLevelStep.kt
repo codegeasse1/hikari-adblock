@@ -123,9 +123,7 @@ private fun ProtectionLevelCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-,
-        border = glassBorder(),
-        elevation = glassCardElevation()) {
+) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
