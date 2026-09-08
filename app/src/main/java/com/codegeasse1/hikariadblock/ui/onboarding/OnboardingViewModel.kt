@@ -1,0 +1,80 @@
+package com.codegeasse1.hikariadblock.ui.onboarding
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
+import com.codegeasse1.hikariadblock.data.entities.DnsProtocol
+import com.codegeasse1.hikariadblock.data.entities.DnsProvider
+import com.codegeasse1.hikariadblock.data.entities.DnsProviders
+import com.codegeasse1.hikariadblock.ui.onboarding.data.ProtectionLevel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
+
+class OnboardingViewModel(
+    private val appPrefs: AppPreferences,
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val _selectedProtectionLevel = MutableStateFlow(ProtectionLevel.STANDARD)
+    val selectedProtectionLevel: StateFlow<ProtectionLevel> = _selectedProtectionLevel.asStateFlow()
+
+    private val _selectedDnsProvider = MutableStateFlow(DnsProviders.SYSTEM)
+    val selectedDnsProvider: StateFlow<DnsProvider> = _selectedDnsProvider.asStateFlow()
+
+    fun selectProtectionLevel(level: ProtectionLevel) {
+        _selectedProtectionLevel.value = level
+    }
+
+    fun selectDnsProvider(provider: DnsProvider) {
+        _selectedDnsProvider.value = provider
+    }
+
+    fun setCrashReportingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appPrefs.setCrashReportingEnabled(enabled)
+            // also toggle it immediately so it starts or stops
+            com.codegeasse1.hikariadblock.utils.CrashReportingManager.toggleSentry(getApplication(), enabled)
+        }
+    }
+
+    suspend fun completeOnboarding() {
+        // Save protection level
+        appPrefs.setProtectionLevel(_selectedProtectionLevel.value.name)
+
+        // Save DNS provider
+        val provider = _selectedDnsProvider.value
+        appPrefs.setDnsProviderId(provider.id)
+        appPrefs.setUpstreamDns(provider.ipAddress)
+
+        // Set protocol based on provider capabilities
+        if (provider.dohUrl != null) {
+            appPrefs.setDnsProtocol(DnsProtocol.DOH)
+            appPrefs.setDohUrl(provider.dohUrl)
+        } else {
+            appPrefs.setDnsProtocol(DnsProtocol.PLAIN)
+        }
+
+        appPrefs.setFallbackDns(selectFallbackDns(provider).ipAddress)
+
+        // Mark onboarding as completed
+        appPrefs.setOnboardingCompleted(true)
+    }
+
+    /**
+     * Select a fallback DNS provider different from the primary one.
+     * Uses privacy-friendly Quad9 ↔ AdGuard pairing for standard fallbacks.
+     */
+    private fun selectFallbackDns(primary: DnsProvider): DnsProvider {
+        return when (primary.id) {
+            DnsProviders.QUAD9.id -> DnsProviders.ADGUARD
+            DnsProviders.ADGUARD.id -> DnsProviders.QUAD9
+            DnsProviders.SYSTEM.id -> DnsProviders.QUAD9
+            else -> DnsProviders.ALL_PROVIDERS.firstOrNull {
+                it.id != primary.id
+            } ?: DnsProviders.QUAD9
+        }
+    }
+}
