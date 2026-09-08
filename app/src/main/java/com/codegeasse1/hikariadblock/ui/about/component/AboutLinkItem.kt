@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.about.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,8 +35,10 @@ fun AboutLinkItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+        shape = GlassCornerSmall
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .fillMaxWidth()

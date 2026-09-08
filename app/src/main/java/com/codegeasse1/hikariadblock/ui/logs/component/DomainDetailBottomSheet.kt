@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.logs.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
@@ -135,11 +139,11 @@ fun DomainDetailBottomSheet(
             // Detail info card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCornerSmall
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -221,11 +225,11 @@ fun DomainDetailBottomSheet(
                 Card(
                     onClick = onAddToCustomBlockRules,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                    colors = glassCardColors(),
+                    shape = GlassCornerSmall
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -254,11 +258,11 @@ fun DomainDetailBottomSheet(
                 Card(
                     onClick = onAddToWhiteList,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                    colors = glassCardColors(),
+                    shape = GlassCornerSmall
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -285,11 +289,11 @@ fun DomainDetailBottomSheet(
                 Card(
                     onClick = onAddWildcardWhitelist,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                    colors = glassCardColors(),
+                    shape = GlassCornerSmall
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -317,11 +321,11 @@ fun DomainDetailBottomSheet(
             Card(
                 onClick = onCopyDomain,
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCornerSmall
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

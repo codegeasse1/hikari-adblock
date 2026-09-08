@@ -298,6 +298,7 @@ class GoTunnelAdapter(
     ) {
         if (isRunning) return
         isRunning = true
+        activeAdapter = this
 
         // 1. Synchronize the MITM state before starting the tunnel.
         // HTTPS filtering now runs through the userspace TCP/IP stack
@@ -389,6 +390,9 @@ class GoTunnelAdapter(
             delay(300) // Give OS time to release the socket
         }
 
+        isRunning = true
+        activeAdapter = this
+
         setupAppResolver()
         setupDomainChecker()
         setupFirewallChecker()
@@ -436,6 +440,7 @@ class GoTunnelAdapter(
      */
     fun stop() {
         isRunning = false
+        if (activeAdapter === this) activeAdapter = null
         engine.stop()
         Timber.d("Go tunnel engine stopped")
     }
@@ -500,6 +505,15 @@ class GoTunnelAdapter(
     }
 
     companion object {
+        /**
+         * The currently-active [GoTunnelAdapter] (VPN or Root proxy mode), or
+         * null when no engine is running. Lets other components (e.g. the
+         * filter repository) push live rule updates (cosmetic CSS, tries)
+         * to the running engine without a restart.
+         */
+        @Volatile
+        var activeAdapter: GoTunnelAdapter? = null
+
         /**
          * Convert DNS query type number to human-readable string.
          * DNS types defined in RFC 1035 & 3596.

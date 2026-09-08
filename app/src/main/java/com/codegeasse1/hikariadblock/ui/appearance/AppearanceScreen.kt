@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.appearance
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.os.Build
 import androidx.compose.foundation.background
@@ -124,9 +128,11 @@ fun AppearanceScreen(
                 icon = Icons.Default.DarkMode
             )
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Column {
                     val themes = listOf(
                         Triple(
@@ -194,9 +200,11 @@ fun AppearanceScreen(
                 icon = Icons.Default.Palette
             )
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
@@ -381,9 +389,11 @@ fun AppearanceScreen(
                 icon = Icons.Default.Menu
             )
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -417,9 +427,11 @@ fun AppearanceScreen(
                 icon = Icons.Default.Language
             )
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Column {
                     val languages = listOf(
                         Triple(

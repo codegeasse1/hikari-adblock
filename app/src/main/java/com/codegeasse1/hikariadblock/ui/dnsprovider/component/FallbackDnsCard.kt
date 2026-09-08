@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.dnsprovider.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,11 +39,11 @@ fun FallbackDnsCard(
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+        colors = glassCardColors(),
+        shape = GlassCornerSmall
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

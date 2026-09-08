@@ -1,4 +1,9 @@
 package com.codegeasse1.hikariadblock.ui.filter.detail
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.content.ClipData
 import android.widget.Toast
@@ -166,12 +171,12 @@ fun FilterDetailScreen(
             // Filter info card
             item {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(16.dp),
+                    colors = glassCardColors(),
+                    shape = GlassCorner,
                     modifier = Modifier.fillMaxWidth()
-                ) {
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -362,12 +367,12 @@ fun FilterDetailScreen(
                 item {
                     val isLocal = f.trieUrl.startsWith("local://")
                     Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = glassCardColors(),
+                        shape = GlassCornerSmall,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
+,
+                        border = glassBorder(),
+                        elevation = glassCardElevation()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -414,12 +419,12 @@ fun FilterDetailScreen(
             }
             item {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = glassCardColors(),
+                    shape = GlassCornerSmall,
                     modifier = Modifier.fillMaxWidth()
-                ) {
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -451,12 +456,12 @@ fun FilterDetailScreen(
             }
             item {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = glassCardColors(),
+                    shape = GlassCornerSmall,
                     modifier = Modifier.fillMaxWidth()
-                ) {
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.httpsfiltering.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,11 +47,11 @@ fun SetupGuideCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
+        shape = GlassCorner,
+        colors = glassCardColors()
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
             Row(verticalAlignment = Alignment.CenterVertically) {

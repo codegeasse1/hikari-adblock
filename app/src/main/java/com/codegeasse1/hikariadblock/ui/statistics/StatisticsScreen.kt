@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.statistics
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
@@ -202,11 +206,11 @@ fun StatisticsScreen(
             val blockRate = if (totalCount > 0) (blockedCount * 100f / totalCount) else 0f
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -275,11 +279,11 @@ fun StatisticsScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 val chartModifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
@@ -334,11 +338,11 @@ fun StatisticsScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
+                    colors = glassCardColors(),
+                    shape = GlassCorner
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         topBlockedDomains.forEachIndexed { index, entry ->
                             Row(
@@ -388,11 +392,11 @@ fun StatisticsScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
+                    colors = glassCardColors(),
+                    shape = GlassCorner
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         topApps.forEachIndexed { index, app ->
                             val context = LocalContext.current

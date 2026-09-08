@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +19,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.codegeasse1.hikariadblock.R
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
 import com.codegeasse1.hikariadblock.ui.theme.TextSecondary
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 @Composable
 fun StatCard(
@@ -34,10 +36,10 @@ fun StatCard(
     val cardDescription = stringResource(R.string.accessibility_stat_card, label, value)
     Card(
         modifier = modifier.semantics { contentDescription = cardDescription },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(16.dp)
+        colors = glassCardColors(),
+        shape = GlassCorner,
+        border = glassBorder(),
+        elevation = glassCardElevation()
     ) {
         Column(
             modifier = Modifier.padding(20.dp)

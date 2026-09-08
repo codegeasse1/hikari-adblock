@@ -71,8 +71,12 @@ import com.codegeasse1.hikariadblock.ui.home.component.StatCard
 import com.codegeasse1.hikariadblock.ui.home.component.StatsChart
 import com.codegeasse1.hikariadblock.ui.theme.AccentBlue
 import com.codegeasse1.hikariadblock.ui.theme.DangerRed
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
 import com.codegeasse1.hikariadblock.ui.theme.SecurityOrange
 import com.codegeasse1.hikariadblock.ui.theme.TextSecondary
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 import com.codegeasse1.hikariadblock.utils.AppConstants.AVG_AD_SIZE_KB
 import com.codegeasse1.hikariadblock.utils.VpnUtils
 import com.codegeasse1.hikariadblock.utils.formatCount
@@ -153,8 +157,11 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
+                    ),
+                    shape = GlassCorner,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -372,10 +379,10 @@ fun HomeScreen(
             val dataSavedKb = blockedCount * AVG_AD_SIZE_KB
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(16.dp)
+                colors = glassCardColors(),
+                shape = GlassCorner,
+                border = glassBorder(),
+                elevation = glassCardElevation()
             ) {
                 Row(
                     modifier = Modifier
@@ -493,10 +500,10 @@ fun HomeScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                colors = glassCardColors(),
+                shape = GlassCorner,
+                border = glassBorder(),
+                elevation = glassCardElevation()
                 ) {
                     when (selectedChartTab) {
                         0 -> {
@@ -568,10 +575,10 @@ fun HomeScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                colors = glassCardColors(),
+                shape = GlassCorner,
+                border = glassBorder(),
+                elevation = glassCardElevation()
                 ) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         topBlockedDomains.forEachIndexed { index, entry ->
@@ -624,10 +631,10 @@ fun HomeScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                colors = glassCardColors(),
+                shape = GlassCorner,
+                border = glassBorder(),
+                elevation = glassCardElevation()
                 ) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         recentBlocked.forEach { entry ->

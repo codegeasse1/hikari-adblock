@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.firewall.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -60,8 +63,10 @@ fun FirewallAppItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+        shape = GlassCornerSmall
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

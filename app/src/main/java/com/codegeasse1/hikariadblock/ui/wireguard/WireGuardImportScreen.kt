@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.wireguard
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -249,7 +253,7 @@ private fun WireGuardToggleCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = GlassCorner,
         colors = CardDefaults.cardColors(
             containerColor = if (isWgActive) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -257,7 +261,9 @@ private fun WireGuardToggleCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             }
         )
-    ) {
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -320,9 +326,11 @@ private fun SplitDnsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
+        shape = GlassCorner,
+        colors = glassCardColors(),
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -365,9 +373,11 @@ private fun ExcludeLanCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
+        shape = GlassCorner,
+        colors = glassCardColors(),
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

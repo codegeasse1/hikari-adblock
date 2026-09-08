@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.logs.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.animateColorAsState
@@ -87,11 +91,11 @@ fun LogEntryItem(
 
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+        colors = glassCardColors(),
+        shape = GlassCornerSmall
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

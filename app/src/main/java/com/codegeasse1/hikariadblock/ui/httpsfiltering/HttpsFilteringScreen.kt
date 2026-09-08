@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.httpsfiltering
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -239,11 +243,11 @@ fun HttpsFilteringScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
-                        ) {
+                            shape = GlassCorner,
+                            colors = glassCardColors()
+,
+                            border = glassBorder(),
+                            elevation = glassCardElevation()) {
                             Column {
                                 browsers.forEachIndexed { index, browser ->
                                     BrowserRow(
@@ -269,11 +273,11 @@ fun HttpsFilteringScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
-                        ) {
+                            shape = GlassCorner,
+                            colors = glassCardColors()
+,
+                            border = glassBorder(),
+                            elevation = glassCardElevation()) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier

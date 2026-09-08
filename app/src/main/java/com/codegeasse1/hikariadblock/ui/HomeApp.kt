@@ -2,21 +2,30 @@ package com.codegeasse1.hikariadblock.ui
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +37,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerPill
 import com.codegeasse1.hikariadblock.ui.about.AboutScreen
 import com.codegeasse1.hikariadblock.ui.appearance.AppearanceScreen
 import com.codegeasse1.hikariadblock.ui.appmanagement.AppManagementScreen
@@ -104,49 +114,70 @@ fun HomeApp(
     Scaffold(
         bottomBar = {
             if (!showBottomBar) return@Scaffold
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
             ) {
-                bottomBarScreens.forEach { screen ->
-                    NavigationBarItem(
-                        selected = currentBackStack == when (screen) {
-                            BottomBarScreen.Home -> homeStack
-                            BottomBarScreen.FilterSetup -> filterStack
-                            BottomBarScreen.Firewall -> firewallStack
-                            BottomBarScreen.DomainRule -> domainRuleStack
-                            BottomBarScreen.Settings -> settingsStack
-                        },
-                        onClick = {
-                            currentTab = screen
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(screen.icon),
-                                contentDescription = stringResource(screen.labelRes),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = if (showBottomNavLabels) {
-                            {
-                                Text(
-                                    text = stringResource(screen.labelRes),
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = LocalTextStyle.current.copy(
-                                        fontSize = 12.sp
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = GlassCornerPill,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 18.dp,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(78.dp)
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        bottomBarScreens.forEach { screen ->
+                            NavigationBarItem(
+                                modifier = Modifier.weight(1f),
+                                selected = currentBackStack == when (screen) {
+                                    BottomBarScreen.Home -> homeStack
+                                    BottomBarScreen.FilterSetup -> filterStack
+                                    BottomBarScreen.Firewall -> firewallStack
+                                    BottomBarScreen.DomainRule -> domainRuleStack
+                                    BottomBarScreen.Settings -> settingsStack
+                                },
+                                onClick = {
+                                    currentTab = screen
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(screen.icon),
+                                        contentDescription = stringResource(screen.labelRes),
+                                        modifier = Modifier.size(24.dp)
                                     )
+                                },
+                                label = if (showBottomNavLabels) {
+                                    {
+                                        Text(
+                                            text = stringResource(screen.labelRes),
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = LocalTextStyle.current.copy(
+                                                fontSize = 12.sp
+                                            )
+                                        )
+                                    }
+                                } else null,
+                                alwaysShowLabel = showBottomNavLabels,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                                 )
-                            }
-                        } else null,
-                        alwaysShowLabel = showBottomNavLabels,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                        )
-                    )
+                            )
+                        }
+                    }
                 }
             }
         }

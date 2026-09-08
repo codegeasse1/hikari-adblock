@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.trustednetworks
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -105,8 +108,10 @@ fun TrustedNetworksScreen(
             // Master toggle
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
+                colors = glassCardColors()
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -133,9 +138,11 @@ fun TrustedNetworksScreen(
             // Add current network
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = glassCardColors(),
                 onClick = { addCurrent() }
-            ) {
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -178,8 +185,10 @@ fun TrustedNetworksScreen(
                     items(trusted.toList()) { ssid ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                        ) {
+                            colors = glassCardColors()
+,
+                            border = glassBorder(),
+                            elevation = glassCardElevation()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically,

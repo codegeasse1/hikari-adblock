@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.wireguard.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,7 +61,7 @@ fun ProfileRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = GlassCorner,
         colors = CardDefaults.cardColors(
             containerColor = if (isActive) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -66,7 +69,9 @@ fun ProfileRow(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
             }
         )
-    ) {
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

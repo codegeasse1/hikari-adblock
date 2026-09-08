@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.wireguard
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -170,11 +173,13 @@ private fun InterfaceCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = GlassCorner,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         ),
-    ) {
+,
+            border = glassBorder(),
+            elevation = glassCardElevation()) {
         FormColumn {
             FieldText(
                 value = state.privateKey,
@@ -217,11 +222,13 @@ private fun PeerCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = GlassCorner,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         ),
-    ) {
+,
+            border = glassBorder(),
+            elevation = glassCardElevation()) {
         FormColumn {
             Row(
                 modifier = Modifier.fillMaxWidth(),

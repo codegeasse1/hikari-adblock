@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.httpsfiltering.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,11 +32,11 @@ import com.codegeasse1.hikariadblock.R
 fun ExplanationCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
+        shape = GlassCorner,
+        colors = glassCardColors()
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.Top

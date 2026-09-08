@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.domainrules.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -46,8 +50,8 @@ fun DomainItem(
 ) {
     val context = LocalContext.current
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp),
+        colors = glassCardColors(),
+        shape = GlassCornerSmall,
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -59,7 +63,9 @@ fun DomainItem(
                     Toast.makeText(context, "Copied: $domain", Toast.LENGTH_SHORT).show()
                 }
             )
-    ) {
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

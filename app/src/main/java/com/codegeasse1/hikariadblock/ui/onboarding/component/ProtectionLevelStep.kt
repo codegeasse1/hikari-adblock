@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.onboarding.component
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -112,7 +115,7 @@ private fun ProtectionLevelCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = GlassCorner,
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
@@ -120,7 +123,9 @@ private fun ProtectionLevelCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
+,
+        border = glassBorder(),
+        elevation = glassCardElevation()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

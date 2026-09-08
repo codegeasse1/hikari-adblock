@@ -6,6 +6,7 @@ import com.codegeasse1.hikariadblock.data.dao.FilterListDao
 import com.codegeasse1.hikariadblock.data.dao.WhitelistDomainDao
 import com.codegeasse1.hikariadblock.data.entities.FilterList
 import com.codegeasse1.hikariadblock.data.remote.FilterDownloadManager
+import com.codegeasse1.hikariadblock.service.GoTunnelAdapter
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsChannel
@@ -79,23 +80,57 @@ class FilterListRepository(
     private val YOUTUBE_AD_DOMAINS = listOf(
         "doubleclick.net",
         "googlesyndication.com",
+        "googleadservices.com",
+        "googletagservices.com",
         "adservice.google.com",
         "ads.youtube.com",
         "s.youtube.com"
     )
 
     /**
-     * Instantly enable/disable YouTube ad blocking. Edits the in-memory set
-     * directly so the change takes effect on the very next DNS query — no
-     * restart, no filter recompile, no phone restart.
+     * Curated cosmetic CSS that hides YouTube's first-party "sponsor" ad
+     * surfaces — the ones served by youtube.com itself (and thus invisible
+     * to DNS blocking): in-feed promoted cards on the home tab, promoted
+     * videos in the right-hand "Up next" rail below the player, banner
+     * promos, masthead ads and in-player overlay/promo slots. Injected via
+     * the HTTPS/cosmetic filtering pipeline (requires root CA + selected
+     * browser). Each rule is a complete "selector { display: none }".
      */
-    fun setYoutubeAdBlocking(enabled: Boolean) {
+    private val YOUTUBE_COSMETIC_CSS = """
+        ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, ytd-promoted-sparkles-web-renderer, ytd-promoted-video-renderer, ytd-grid-promoted-video-renderer { display: none !important; }
+        ytd-statement-banner-renderer, ytd-banner-promo-renderer, ytd-video-masthead-ad-v3-renderer, ytd-masthead-ad { display: none !important; }
+        #masthead-ad, #player-ads, #player-ads-ad, #related #player-ads { display: none !important; }
+        ytd-compact-promoted-video-renderer, ytd-display-ad-renderer, ytd-video-ad, ytd-ad-slot-renderer ytd-promoted-sparkles-text-search-renderer { display: none !important; }
+        ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"], ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads-transparency"] { display: none !important; }
+        yt-mealbar-promo-renderer, ytd-popup-container ytd-display-ad-renderer, ytd-popup-container ytd-mealbar-promo-renderer { display: none !important; }
+        ytd-player-legacy-desktop-watch-ads-renderer, ytd-ad-slot-renderer[is-masthead-v2], ytd-banner-promo-renderer { display: none !important; }
+        .ytp-ad-module, .ytp-ad-player-overlay, .ytp-ad-overlay-container, .ytp-ad-image-overlay, .ytp-ad-text-overlay { display: none !important; }
+        ytd-rich-item-renderer:has(ytd-ad-slot-renderer), ytd-rich-item-renderer:has(ytd-in-feed-ad-layout-renderer), ytd-rich-item-renderer:has(ytd-promoted-video-renderer) { display: none !important; }
+    """.trimIndent()
+
+    /**
+     * Instantly enable/disable YouTube ad blocking. Edits the in-memory set
+     * so DNS-level blocking takes effect on the very next DNS query, and
+     * recompiles the cosmetic CSS (first-party feed/related ads) then pushes
+     * it live to the running Go engine — no restart required.
+     */
+    suspend fun setYoutubeAdBlocking(enabled: Boolean) {
         if (enabled) {
             youtubeAdDomains.addAll(YOUTUBE_AD_DOMAINS)
         } else {
             youtubeAdDomains.clear()
         }
         Timber.d("YouTube ad blocking ${if (enabled) "ENABLED" else "disabled"} (${youtubeAdDomains.size} domains)")
+        try {
+            recompileCosmeticCss()
+            GoTunnelAdapter.activeAdapter?.updateCosmeticRules()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to live-apply YouTube cosmetic rules")
+        }
+    }
+
+    private suspend fun recompileCosmeticCss() = withContext(Dispatchers.IO) {
+        compileCosmeticRules(filterListDao.getEnabled())
     }
 
     private val _domainCountFlow = MutableStateFlow(0)
@@ -445,10 +480,17 @@ class FilterListRepository(
         withContext(Dispatchers.IO) {
             try {
                 val validLists = enabledLists.filter { it.category != FilterList.CATEGORY_SECURITY }
-                if (validLists.isEmpty()) return@withContext
 
                 val cssBuilder = StringBuilder()
                 var rulesAdded = 0
+
+                // Always inject the curated YouTube "sponsor" ad surface rules
+                // when YouTube ad blocking is enabled — even if the user has
+                // no remote cosmetic filter lists enabled.
+                if (youtubeAdDomains.isNotEmpty()) {
+                    cssBuilder.append(YOUTUBE_COSMETIC_CSS).append("\n")
+                    rulesAdded++
+                }
 
                 for (filter in validLists) {
                     if (filter.cssUrl.isEmpty()) continue

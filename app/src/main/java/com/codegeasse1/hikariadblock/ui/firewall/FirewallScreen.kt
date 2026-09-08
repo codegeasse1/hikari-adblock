@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.firewall
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -220,11 +223,13 @@ fun FirewallScreen(
                     else
                         MaterialTheme.colorScheme.surfaceVariant
                 ),
-                shape = RoundedCornerShape(16.dp),
+                shape = GlassCorner,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

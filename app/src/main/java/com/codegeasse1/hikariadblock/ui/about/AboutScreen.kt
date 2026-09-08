@@ -1,4 +1,7 @@
 package com.codegeasse1.hikariadblock.ui.about
+import com.codegeasse1.hikariadblock.ui.theme.GlassCornerSmall
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import android.content.Intent
 import androidx.compose.foundation.Image
@@ -153,8 +156,10 @@ fun AboutScreen(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+                shape = GlassCornerSmall
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Text(
                     text = stringResource(R.string.about_no_data),
                     modifier = Modifier

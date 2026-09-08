@@ -60,7 +60,11 @@ import com.codegeasse1.hikariadblock.ui.event.UiEventEffect
 import com.codegeasse1.hikariadblock.ui.filter.component.AddFilterDialog
 import com.codegeasse1.hikariadblock.ui.filter.component.FilterItem
 import com.codegeasse1.hikariadblock.ui.filter.component.SectionHeader
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
 import com.codegeasse1.hikariadblock.ui.theme.TextSecondary
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -240,8 +244,10 @@ fun FilterSetupScreen(
                         }
                         item {
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = RoundedCornerShape(16.dp),
+                                colors = glassCardColors(),
+                                shape = GlassCorner,
+                                border = glassBorder(),
+                                elevation = glassCardElevation(),
                                 modifier = Modifier.animateContentSize()
                             ) {
                                 Column {
@@ -277,8 +283,10 @@ fun FilterSetupScreen(
                         }
                         item {
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = RoundedCornerShape(16.dp),
+                                colors = glassCardColors(),
+                                shape = GlassCorner,
+                                border = glassBorder(),
+                                elevation = glassCardElevation(),
                                 modifier = Modifier.animateContentSize()
                             ) {
                                 Column {
@@ -314,8 +322,10 @@ fun FilterSetupScreen(
                         }
                         item {
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = RoundedCornerShape(16.dp),
+                                colors = glassCardColors(),
+                                shape = GlassCorner,
+                                border = glassBorder(),
+                                elevation = glassCardElevation(),
                                 modifier = Modifier.animateContentSize()
                             ) {
                                 Column {

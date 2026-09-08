@@ -1,4 +1,8 @@
 package com.codegeasse1.hikariadblock.ui.profile
+import com.codegeasse1.hikariadblock.ui.theme.GlassCorner
+import com.codegeasse1.hikariadblock.ui.theme.glassBorder
+import com.codegeasse1.hikariadblock.ui.theme.glassCardColors
+import com.codegeasse1.hikariadblock.ui.theme.glassCardElevation
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -114,9 +118,11 @@ fun ProfileScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+                colors = glassCardColors(),
+                shape = GlassCorner
+,
+                border = glassBorder(),
+                elevation = glassCardElevation()) {
                 Column(modifier = Modifier.animateContentSize()) {
                     profiles.forEachIndexed { index, profile ->
                         ProfileItem(
@@ -152,9 +158,11 @@ fun ProfileScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
+                    colors = glassCardColors(),
+                    shape = GlassCorner
+,
+                    border = glassBorder(),
+                    elevation = glassCardElevation()) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         val schedulesWithProfiles = remember {
                             allSchedules.mapNotNull { schedule ->
