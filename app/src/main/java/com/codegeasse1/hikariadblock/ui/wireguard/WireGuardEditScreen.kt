@@ -177,7 +177,6 @@ private fun InterfaceCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         ),
-,
             border = glassBorder(),
             elevation = glassCardElevation()) {
         FormColumn {
@@ -226,7 +225,6 @@ private fun PeerCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         ),
-,
             border = glassBorder(),
             elevation = glassCardElevation()) {
         FormColumn {

@@ -328,7 +328,6 @@ private fun SplitDnsCard(
         modifier = Modifier.fillMaxWidth(),
         shape = GlassCorner,
         colors = glassCardColors(),
-,
         border = glassBorder(),
         elevation = glassCardElevation()) {
         Column(
@@ -375,7 +374,6 @@ private fun ExcludeLanCard(
         modifier = Modifier.fillMaxWidth(),
         shape = GlassCorner,
         colors = glassCardColors(),
-,
         border = glassBorder(),
         elevation = glassCardElevation()) {
         Row(
