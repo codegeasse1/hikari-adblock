@@ -31,6 +31,19 @@ On most modern phones `app-arm64-v8a-release.apk` is a smaller download.
 > ⚠️ **Before installing an update**, uninstall the older Hikari AdBlock first (each release is
 > signed with its own key, and Android will refuse to overwrite a different signature).
 
+## 📸 Screenshots
+
+<div align="center">
+
+| | | |
+|---|---|---|
+| <img src="screenshots/screenshot-home.jpg" width="190" alt="Home"> | <img src="screenshots/screenshot-filter-sets.jpg" width="190" alt="Filter Sets"> | <img src="screenshots/screenshot-domain-rules.jpg" width="190" alt="Domain Rules"> |
+| **Home** — protection status & stats | **Filter Sets** — ad-blocking filter lists | **Domain Rules** — whitelist / blocklist |
+| <img src="screenshots/screenshot-whitelist-apps.jpg" width="190" alt="Whitelisted Apps"> | <img src="screenshots/screenshot-settings.jpg" width="190" alt="Settings"> | |
+| **Whitelisted Apps** — per-app control | **Settings** — VPN, Root & Shizuku modes, YouTube ad blocking | |
+
+</div>
+
 ## Changelog
 
 See the full, per-version changelog on the [Releases page](https://github.com/codegeasse1/hikari-adblock/releases).
