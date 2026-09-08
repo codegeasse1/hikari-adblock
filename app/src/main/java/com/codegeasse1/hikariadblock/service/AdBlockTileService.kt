@@ -30,42 +30,51 @@ class AdBlockTileService : TileService() {
         // Don't allow toggling while VPN is still tearing down
         if (AdBlockVpnService.isStopping) return
 
+        val isShizukuRunning = ShizukuProxyService.isRunning
         val isRootProxyRunning = RootProxyService.isRunning
         val isVpnRunning = AdBlockVpnService.isRunning
 
-        if (isRootProxyRunning) {
+        if (isShizukuRunning) {
+            ShizukuProxyService.stop(this)
+        } else if (isRootProxyRunning) {
             RootProxyService.stop(this)
         } else if (isVpnRunning) {
             AdBlockVpnService.stop(this)
         } else {
             val routingMode = runBlocking { appPrefs.getRoutingModeSnapshot() }
-            if (routingMode == AppPreferences.ROUTING_MODE_ROOT) {
-                RootProxyService.start(this)
-            } else {
-                if (VpnUtils.isOtherVpnActive(this)) {
-                    val intent = Intent(this, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        putExtra(MainActivity.EXTRA_SHOW_VPN_CONFLICT_DIALOG, true)
-                    }
-                    val pendingIntent = PendingIntent.getActivity(
-                        this, 0, intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        startActivityAndCollapse(pendingIntent)
-                    } else {
-                        startActivityAndCollapse(intent)
-                    }
-                    return
+            when (routingMode) {
+                AppPreferences.ROUTING_MODE_ROOT -> {
+                    RootProxyService.start(this)
                 }
+                AppPreferences.ROUTING_MODE_SHIZUKU -> {
+                    ShizukuProxyService.start(this)
+                }
+                else -> {
+                    if (VpnUtils.isOtherVpnActive(this)) {
+                        val intent = Intent(this, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            putExtra(MainActivity.EXTRA_SHOW_VPN_CONFLICT_DIALOG, true)
+                        }
+                        val pendingIntent = PendingIntent.getActivity(
+                            this, 0, intent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            startActivityAndCollapse(pendingIntent)
+                        } else {
+                            startActivityAndCollapse(intent)
+                        }
+                        return
+                    }
 
-                AdBlockVpnService.start(this)
+                    AdBlockVpnService.start(this)
+                }
             }
         }
 
         // Update tile after a short delay to reflect new state
         qsTile?.let { tile ->
-            val isRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning
+            val isRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning || ShizukuProxyService.isRunning
             tile.state = if (isRunning) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
             tile.updateTile()
         }
@@ -73,13 +82,18 @@ class AdBlockTileService : TileService() {
 
     private fun updateTileState() {
         qsTile?.let { tile ->
-            val isRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning
+            val isRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning || ShizukuProxyService.isRunning
             if (isRunning) {
                 tile.state = Tile.STATE_ACTIVE
                 tile.label = getString(R.string.app_name)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val isShizuku = ShizukuProxyService.isRunning
                     val isRoot = RootProxyService.isRunning
-                    tile.subtitle = if (isRoot) "Root Proxy" else "Protected"
+                    tile.subtitle = when {
+                        isShizuku -> "Shizuku"
+                        isRoot -> "Root Proxy"
+                        else -> "Protected"
+                    }
                 }
             } else {
                 tile.state = Tile.STATE_INACTIVE

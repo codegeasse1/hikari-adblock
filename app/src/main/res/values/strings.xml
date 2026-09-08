@@ -522,6 +522,13 @@
     <string name="root_proxy_notification_text">Root Proxy mode active — DNS traffic redirected via iptables</string>
     <string name="root_proxy_start_failed_title">Hikari AdBlock failed to start</string>
     <string name="root_proxy_start_failed_text">Could not get root access to start protection. Tap Enable to retry.</string>
+    <string name="settings_shizuku">Shizuku Mode</string>
+    <string name="settings_shizuku_desc">Redirect DNS via iptables without root or a VPN icon (requires Shizuku)</string>
+    <string name="shizuku_not_available">Shizuku is not running. Start the Shizuku app (ADB/wireless debugging) and try again.</string>
+    <string name="shizuku_permission_denied">Shizuku permission was denied. Grant it in the Shizuku app and try again.</string>
+    <string name="shizuku_proxy_notification_text">Shizuku mode active — DNS traffic redirected via iptables</string>
+    <string name="shizuku_start_failed_title">Hikari AdBlock failed to start</string>
+    <string name="shizuku_start_failed_text">Could not set up iptables through Shizuku. Check that Shizuku is running and granted permission, then tap Enable to retry.</string>
     <string name="private_dns_warning_title">Private DNS is on</string>
     <string name="private_dns_warning_text">Android Private DNS bypasses Hikari AdBlock, so filtering may not apply. Set Private DNS to Off or Automatic in system settings.</string>
     <string name="github_link" translatable="false">https://github.com/codegeasse1/hikari-adblock</string>
@@ -561,5 +568,7 @@
     <string name="settings_hide_from_recents_title">Hide from Recent Apps</string>
     <string name="settings_hide_from_recents_subtitle">Hide Hikari AdBlock from the recent apps screen</string>
     <string name="home_disconnecting_desc_root">Stopping Root Proxy…</string>
+    <string name="home_connecting_desc_shizuku">Establishing Shizuku Proxy…</string>
+    <string name="home_disconnecting_desc_shizuku">Stopping Shizuku Proxy…</string>
     <string name="log_record_logs">Record Logs</string>
 </resources>

@@ -29,6 +29,10 @@
 # Keep VPN service
 -keep class com.codegeasse1.hikariadblock.service.** { *; }
 
+# Shizuku API
+-keep class rikka.shizuku.** { *; }
+-dontwarn rikka.shizuku.**
+
 # Go tunnel (gomobile)
 -keep class tunnel.** { *; }
 

@@ -66,6 +66,11 @@
             android:exported="false"
             android:foregroundServiceType="specialUse" />
 
+        <service
+            android:name=".service.ShizukuProxyService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
         <receiver
             android:name=".service.BootReceiver"
             android:exported="false">
@@ -121,6 +126,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Shizuku: lets the Shizuku app start our binder on demand so we can
+             run iptables with shell (ADB) identity — no root, no VPN icon. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"
+            tools:ignore="ProtectedPermissions" />
     </application>
 
 </manifest>

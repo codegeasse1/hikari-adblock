@@ -157,6 +157,10 @@ dependencies {
     implementation(libs.core)
     implementation(libs.service)
 
+    // Shizuku - shell (ADB) privilege for icon-free, root-free iptables mode
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
+
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
 

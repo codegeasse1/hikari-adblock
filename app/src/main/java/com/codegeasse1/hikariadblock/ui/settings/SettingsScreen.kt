@@ -130,6 +130,7 @@ fun SettingsScreen(
                 onSetAutoReconnect = { viewModel.setAutoReconnect(it) },
 
                 onSetRoutingMode = { viewModel.setRoutingModeEnabled(it) },
+                onSetShizukuMode = { viewModel.setShizukuModeEnabled(it) },
                 onSetNetworkSwitchDelayEnabled = { viewModel.setNetworkSwitchDelayEnabled(it) },
                 onSetNetworkSwitchDelaySec = { viewModel.setNetworkSwitchDelaySec(it) },
                 onSetSafeSearchEnabled = { viewModel.setSafeSearchEnabled(it) },

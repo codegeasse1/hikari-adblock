@@ -77,6 +77,7 @@ class AppPreferences(private val context: Context) {
         const val ROUTING_MODE_DIRECT = "direct"
         const val ROUTING_MODE_WIREGUARD = "wireguard"
         const val ROUTING_MODE_ROOT = "root"
+        const val ROUTING_MODE_SHIZUKU = "shizuku"
 
         // Stable ID assigned to the migrated single config from v6.3.0,
         // so the synthesized profile has a deterministic key during the

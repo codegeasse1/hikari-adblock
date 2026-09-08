@@ -14,6 +14,7 @@ import com.codegeasse1.hikariadblock.R
 import com.codegeasse1.hikariadblock.data.dao.DnsLogDao
 import com.codegeasse1.hikariadblock.service.AdBlockVpnService
 import com.codegeasse1.hikariadblock.service.RootProxyService
+import com.codegeasse1.hikariadblock.service.ShizukuProxyService
 import com.codegeasse1.hikariadblock.utils.startOfDayMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +77,7 @@ class AdBlockWidgetProvider : AppWidgetProvider() {
             minWidth >= EXPANDED_MIN_WIDTH_DP &&
                     minHeight >= EXPANDED_MIN_HEIGHT_DP
 
-        val isRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning
+        val isRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning || ShizukuProxyService.isRunning
 
         if (isExpanded) {
             updateExpanded(context, appWidgetManager, appWidgetId, isRunning)

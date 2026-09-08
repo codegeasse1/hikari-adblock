@@ -32,27 +32,42 @@ class BootReceiver : BroadcastReceiver() {
                 // Also restarts after app update (MY_PACKAGE_REPLACED).
                 if (autoReconnect && wasEnabled) {
                     val trigger = if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) "app update" else "boot"
-                    if (routingMode == AppPreferences.ROUTING_MODE_ROOT) {
-                        Timber.d("Auto-starting Root Proxy mode after $trigger")
-                        val serviceIntent = Intent(context, RootProxyService::class.java).apply {
-                            action = RootProxyService.ACTION_START
-                            putExtra(RootProxyService.EXTRA_STARTED_FROM_BOOT, true)
+                    when (routingMode) {
+                        AppPreferences.ROUTING_MODE_ROOT -> {
+                            Timber.d("Auto-starting Root Proxy mode after $trigger")
+                            val serviceIntent = Intent(context, RootProxyService::class.java).apply {
+                                action = RootProxyService.ACTION_START
+                                putExtra(RootProxyService.EXTRA_STARTED_FROM_BOOT, true)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(serviceIntent)
+                            } else {
+                                context.startService(serviceIntent)
+                            }
                         }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            context.startForegroundService(serviceIntent)
-                        } else {
-                            context.startService(serviceIntent)
+                        AppPreferences.ROUTING_MODE_SHIZUKU -> {
+                            Timber.d("Auto-starting Shizuku mode after $trigger")
+                            val serviceIntent = Intent(context, ShizukuProxyService::class.java).apply {
+                                action = ShizukuProxyService.ACTION_START
+                                putExtra(ShizukuProxyService.EXTRA_STARTED_FROM_BOOT, true)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(serviceIntent)
+                            } else {
+                                context.startService(serviceIntent)
+                            }
                         }
-                    } else {
-                        Timber.d("Auto-reconnecting VPN after $trigger")
-                        val serviceIntent = Intent(context, AdBlockVpnService::class.java).apply {
-                            action = AdBlockVpnService.ACTION_START
-                            putExtra(AdBlockVpnService.EXTRA_STARTED_FROM_BOOT, true)
-                        }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            context.startForegroundService(serviceIntent)
-                        } else {
-                            context.startService(serviceIntent)
+                        else -> {
+                            Timber.d("Auto-reconnecting VPN after $trigger")
+                            val serviceIntent = Intent(context, AdBlockVpnService::class.java).apply {
+                                action = AdBlockVpnService.ACTION_START
+                                putExtra(AdBlockVpnService.EXTRA_STARTED_FROM_BOOT, true)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(serviceIntent)
+                            } else {
+                                context.startService(serviceIntent)
+                            }
                         }
                     }
                 }

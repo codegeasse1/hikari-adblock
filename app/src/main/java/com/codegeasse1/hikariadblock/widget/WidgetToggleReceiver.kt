@@ -8,6 +8,7 @@ import com.codegeasse1.hikariadblock.MainActivity
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 import com.codegeasse1.hikariadblock.service.AdBlockVpnService
 import com.codegeasse1.hikariadblock.service.RootProxyService
+import com.codegeasse1.hikariadblock.service.ShizukuProxyService
 import com.codegeasse1.hikariadblock.utils.VpnUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,8 +44,8 @@ class WidgetToggleReceiver : BroadcastReceiver() {
     }
 
     private suspend fun toggleVpn(context: Context) {
-        // Stop logic: evaluate running status of both services
-        if (AdBlockVpnService.isRunning || RootProxyService.isRunning) {
+        // Stop logic: evaluate running status of all services
+        if (AdBlockVpnService.isRunning || RootProxyService.isRunning || ShizukuProxyService.isRunning) {
             // Stop AdBlockVpnService if running
             if (AdBlockVpnService.isRunning) {
                 val stopIntent = Intent(context, AdBlockVpnService::class.java).apply {
@@ -60,12 +61,21 @@ class WidgetToggleReceiver : BroadcastReceiver() {
                 }
                 context.startService(stopIntent)
             }
+
+            // Stop ShizukuProxyService if running
+            if (ShizukuProxyService.isRunning) {
+                val stopIntent = Intent(context, ShizukuProxyService::class.java).apply {
+                    action = ShizukuProxyService.ACTION_STOP
+                }
+                context.startService(stopIntent)
+            }
         } else {
             val appPrefs = AppPreferences(context)
             val routingMode = appPrefs.routingMode.first()
-            val isRootMode = routingMode == AppPreferences.ROUTING_MODE_ROOT
+            val isNonVpnMode = routingMode == AppPreferences.ROUTING_MODE_ROOT ||
+                routingMode == AppPreferences.ROUTING_MODE_SHIZUKU
 
-            if (!isRootMode && VpnUtils.isOtherVpnActive(context)) {
+            if (!isNonVpnMode && VpnUtils.isOtherVpnActive(context)) {
                 Timber.w("Another VPN is active, dropping widget connection request")
                 val appIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -76,8 +86,16 @@ class WidgetToggleReceiver : BroadcastReceiver() {
             }
 
             // Start logic: determine the service class and action dynamically based on routing mode
-            val targetClass = if (isRootMode) RootProxyService::class.java else AdBlockVpnService::class.java
-            val targetAction = if (isRootMode) RootProxyService.ACTION_START else AdBlockVpnService.ACTION_START
+            val targetClass = when (routingMode) {
+                AppPreferences.ROUTING_MODE_ROOT -> RootProxyService::class.java
+                AppPreferences.ROUTING_MODE_SHIZUKU -> ShizukuProxyService::class.java
+                else -> AdBlockVpnService::class.java
+            }
+            val targetAction = when (routingMode) {
+                AppPreferences.ROUTING_MODE_ROOT -> RootProxyService.ACTION_START
+                AppPreferences.ROUTING_MODE_SHIZUKU -> ShizukuProxyService.ACTION_START
+                else -> AdBlockVpnService.ACTION_START
+            }
 
             val startIntent = Intent(context, targetClass).apply {
                 action = targetAction

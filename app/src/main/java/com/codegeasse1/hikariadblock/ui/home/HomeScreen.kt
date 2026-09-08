@@ -212,10 +212,24 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             val isRootMode = routingMode == AppPreferences.ROUTING_MODE_ROOT
+            val isShizukuMode = routingMode == AppPreferences.ROUTING_MODE_SHIZUKU
+            val isNonVpnMode = isRootMode || isShizukuMode
             Text(
                 text = when {
-                    vpnStopping -> stringResource(if (isRootMode) R.string.home_disconnecting_desc_root else R.string.home_disconnecting_desc)
-                    vpnConnecting -> stringResource(if (isRootMode) R.string.home_connecting_desc_root else R.string.home_connecting_desc)
+                    vpnStopping -> stringResource(
+                        when {
+                            isRootMode -> R.string.home_disconnecting_desc_root
+                            isShizukuMode -> R.string.home_disconnecting_desc_shizuku
+                            else -> R.string.home_disconnecting_desc
+                        }
+                    )
+                    vpnConnecting -> stringResource(
+                        when {
+                            isRootMode -> R.string.home_connecting_desc_root
+                            isShizukuMode -> R.string.home_connecting_desc_shizuku
+                            else -> R.string.home_connecting_desc
+                        }
+                    )
                     vpnEnabled -> stringResource(R.string.home_protected_desc)
                     showTrustedPause -> stringResource(R.string.home_paused_trusted_short)
                     else -> stringResource(R.string.home_unprotected_desc)
@@ -260,6 +274,7 @@ fun HomeScreen(
                     Text(
                         text = when (routingMode) {
                             AppPreferences.ROUTING_MODE_ROOT -> "Root Proxy Mode"
+                            AppPreferences.ROUTING_MODE_SHIZUKU -> "Shizuku Mode"
                             AppPreferences.ROUTING_MODE_WIREGUARD -> "WireGuard Mode"
                             else -> "Local VPN Mode"
                         },
@@ -323,7 +338,7 @@ fun HomeScreen(
                         if (vpnEnabled) {
                             viewModel.stopVpn(context)
                         } else {
-                            if (!isRootMode && VpnUtils.isOtherVpnActive(context)) {
+                            if (!isNonVpnMode && VpnUtils.isOtherVpnActive(context)) {
                                 onShowVpnConflictDialog()
                             } else {
                                 onRequestVpnPermission()

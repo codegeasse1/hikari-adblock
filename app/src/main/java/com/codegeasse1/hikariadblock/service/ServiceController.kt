@@ -19,13 +19,17 @@ object ServiceController {
     /**
      * Request a restart of whichever ad-blocking service is currently running.
      * If Root Proxy mode is active, restarts RootProxyService.
+     * If Shizuku mode is active, restarts ShizukuProxyService.
      * If VPN mode is active, restarts AdBlockVpnService.
      * Safe to call from any thread.
      */
     fun requestRestart(context: Context) {
-        // Check both services — at least one might be running
+        // Check all services — at least one might be running
         if (RootProxyService.isRunning) {
             RootProxyService.requestRestart(context)
+        }
+        if (ShizukuProxyService.isRunning) {
+            ShizukuProxyService.requestRestart(context)
         }
         if (AdBlockVpnService.isRunning) {
             AdBlockVpnService.requestRestart(context)
@@ -33,17 +37,17 @@ object ServiceController {
     }
 
     /**
-     * Start the VPN or Root Proxy depending on AppPreferences.
+     * Start the VPN, Root Proxy or Shizuku Proxy depending on AppPreferences.
      */
     fun requestStart(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val appPrefs = AppPreferences(context)
             val routingMode = appPrefs.routingMode.first()
 
-            if (routingMode == AppPreferences.ROUTING_MODE_ROOT) {
-                RootProxyService.start(context)
-            } else {
-                AdBlockVpnService.start(context)
+            when (routingMode) {
+                AppPreferences.ROUTING_MODE_ROOT -> RootProxyService.start(context)
+                AppPreferences.ROUTING_MODE_SHIZUKU -> ShizukuProxyService.start(context)
+                else -> AdBlockVpnService.start(context)
             }
         }
     }
@@ -54,6 +58,9 @@ object ServiceController {
     fun requestStop(context: Context) {
         if (RootProxyService.isRunning) {
             RootProxyService.stop(context)
+        }
+        if (ShizukuProxyService.isRunning) {
+            ShizukuProxyService.stop(context)
         }
         if (AdBlockVpnService.isRunning) {
             AdBlockVpnService.stop(context)

@@ -31,6 +31,8 @@ import com.codegeasse1.hikariadblock.worker.DailySummaryScheduler
 import com.codegeasse1.hikariadblock.worker.FilterUpdateScheduler
 import com.codegeasse1.hikariadblock.service.IptablesManager
 import com.codegeasse1.hikariadblock.service.RootProxyService
+import com.codegeasse1.hikariadblock.service.ShizukuManager
+import com.codegeasse1.hikariadblock.service.ShizukuProxyService
 import com.codegeasse1.hikariadblock.utils.CrashReportingManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -176,6 +178,37 @@ class SettingsViewModel(
         }
     }
 
+    fun setShizukuModeEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!enabled) {
+                applyRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+                return@launch
+            }
+            if (!ShizukuManager.isBinderAlive()) {
+                _events.toast(R.string.shizuku_not_available)
+                return@launch
+            }
+            if (ShizukuManager.isPreV11()) {
+                _events.toast(R.string.shizuku_not_available)
+                return@launch
+            }
+            if (ShizukuManager.hasPermission()) {
+                applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+            } else {
+                // First-time grant — request it (dialog/Shizuku app), then enable
+                ShizukuManager.requestPermission { granted ->
+                    viewModelScope.launch(Dispatchers.IO) {
+                        if (granted) {
+                            applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+                        } else {
+                            _events.toast(R.string.shizuku_permission_denied)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun applyRoutingMode(mode: String) {
         val oldMode = appPrefs.routingMode.first()
         if (oldMode == mode) return
@@ -183,27 +216,28 @@ class SettingsViewModel(
         appPrefs.setRoutingMode(mode)
         val context = getApplication<Application>().applicationContext
 
-        val isRoot = mode == AppPreferences.ROUTING_MODE_ROOT
+        val anyRunning =
+            AdBlockVpnService.isRunning || RootProxyService.isRunning || ShizukuProxyService.isRunning
+        if (!anyRunning) return
 
-        if (AdBlockVpnService.isRunning || RootProxyService.isRunning) {
-            if (isRoot) {
-                val stopIntent = Intent(context, AdBlockVpnService::class.java).apply {
-                    action = AdBlockVpnService.ACTION_STOP
-                }
-                context.startService(stopIntent)
+        when (mode) {
+            AppPreferences.ROUTING_MODE_ROOT -> {
+                AdBlockVpnService.stop(context)
+                ShizukuProxyService.stop(context)
                 delay(800)
                 RootProxyService.start(context)
-            } else {
+            }
+            AppPreferences.ROUTING_MODE_SHIZUKU -> {
+                AdBlockVpnService.stop(context)
                 RootProxyService.stop(context)
                 delay(800)
-                val startIntent = Intent(context, AdBlockVpnService::class.java).apply {
-                    action = AdBlockVpnService.ACTION_START
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(startIntent)
-                } else {
-                    context.startService(startIntent)
-                }
+                ShizukuProxyService.start(context)
+            }
+            else -> {
+                RootProxyService.stop(context)
+                ShizukuProxyService.stop(context)
+                delay(800)
+                AdBlockVpnService.start(context)
             }
         }
     }

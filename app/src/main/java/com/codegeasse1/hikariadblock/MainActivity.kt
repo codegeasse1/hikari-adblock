@@ -23,6 +23,8 @@ import com.codegeasse1.hikariadblock.utils.LocaleHelper
 import com.codegeasse1.hikariadblock.service.AdBlockVpnService
 import com.codegeasse1.hikariadblock.service.IptablesManager
 import com.codegeasse1.hikariadblock.service.RootProxyService
+import com.codegeasse1.hikariadblock.service.ShizukuManager
+import com.codegeasse1.hikariadblock.service.ShizukuProxyService
 import com.codegeasse1.hikariadblock.ui.HikariAdBlockApp
 import com.codegeasse1.hikariadblock.ui.theme.HikariTheme
 import kotlinx.coroutines.flow.first
@@ -147,6 +149,8 @@ class MainActivity : ComponentActivity() {
 
             if (routingMode == AppPreferences.ROUTING_MODE_ROOT) {
                 if (!RootProxyService.isRunning) handleVpnToggle()
+            } else if (routingMode == AppPreferences.ROUTING_MODE_SHIZUKU) {
+                if (!ShizukuProxyService.isRunning) handleVpnToggle()
             } else {
                 if (!AdBlockVpnService.isRunning) handleVpnToggle()
             }
@@ -161,6 +165,12 @@ class MainActivity : ComponentActivity() {
             if (routingMode == AppPreferences.ROUTING_MODE_ROOT) {
                 if (RootProxyService.isRunning) {
                     RootProxyService.stop(this)
+                } else {
+                    handleVpnToggle()
+                }
+            } else if (routingMode == AppPreferences.ROUTING_MODE_SHIZUKU) {
+                if (ShizukuProxyService.isRunning) {
+                    ShizukuProxyService.stop(this)
                 } else {
                     handleVpnToggle()
                 }
@@ -208,6 +218,32 @@ class MainActivity : ComponentActivity() {
                     appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
                     withContext(Dispatchers.Main) {
                         requestVpnPermission()
+                    }
+                }
+            } else if (routingMode == AppPreferences.ROUTING_MODE_SHIZUKU) {
+                if (!ShizukuManager.isBinderAlive()) {
+                    // Shizuku not running — fallback to Direct mode and request VPN permission
+                    appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+                    withContext(Dispatchers.Main) {
+                        requestVpnPermission()
+                    }
+                } else if (ShizukuManager.hasPermission()) {
+                    withContext(Dispatchers.Main) {
+                        ShizukuProxyService.start(this@MainActivity)
+                    }
+                } else {
+                    // First-time grant — request it, then start once granted
+                    ShizukuManager.requestPermission { granted ->
+                        if (granted) {
+                            withContext(Dispatchers.Main) {
+                                ShizukuProxyService.start(this@MainActivity)
+                            }
+                        } else {
+                            appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+                            withContext(Dispatchers.Main) {
+                                requestVpnPermission()
+                            }
+                        }
                     }
                 }
             } else {

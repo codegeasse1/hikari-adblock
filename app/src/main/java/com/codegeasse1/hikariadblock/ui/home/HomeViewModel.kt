@@ -17,6 +17,7 @@ import com.codegeasse1.hikariadblock.data.repository.FilterListRepository
 import com.codegeasse1.hikariadblock.service.AdBlockVpnService
 import com.codegeasse1.hikariadblock.service.VpnState
 import com.codegeasse1.hikariadblock.service.RootProxyService
+import com.codegeasse1.hikariadblock.service.ShizukuProxyService
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,24 +55,32 @@ class HomeViewModel(
     // ── Reactive VPN state (derived from the single source of truth) ──
     val vpnEnabled: StateFlow<Boolean> = combine(
         AdBlockVpnService.state,
-        RootProxyService.state
-    ) { state1, state2 ->
-        state1 == VpnState.RUNNING || state2 == VpnState.RUNNING
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AdBlockVpnService.isRunning || RootProxyService.isRunning)
+        RootProxyService.state,
+        ShizukuProxyService.state
+    ) { state1, state2, state3 ->
+        state1 == VpnState.RUNNING || state2 == VpnState.RUNNING || state3 == VpnState.RUNNING
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        AdBlockVpnService.isRunning || RootProxyService.isRunning || ShizukuProxyService.isRunning
+    )
 
     val vpnConnecting: StateFlow<Boolean> = combine(
         AdBlockVpnService.state,
-        RootProxyService.state
-    ) { state1, state2 ->
+        RootProxyService.state,
+        ShizukuProxyService.state
+    ) { state1, state2, state3 ->
         state1 == VpnState.STARTING || state1 == VpnState.RESTARTING ||
-        state2 == VpnState.STARTING || state2 == VpnState.RESTARTING
+            state2 == VpnState.STARTING || state2 == VpnState.RESTARTING ||
+            state3 == VpnState.STARTING || state3 == VpnState.RESTARTING
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AdBlockVpnService.isConnecting)
 
     val vpnStopping: StateFlow<Boolean> = combine(
         AdBlockVpnService.state,
-        RootProxyService.state
-    ) { state1, state2 ->
-        state1 == VpnState.STOPPING || state2 == VpnState.STOPPING
+        RootProxyService.state,
+        ShizukuProxyService.state
+    ) { state1, state2, state3 ->
+        state1 == VpnState.STOPPING || state2 == VpnState.STOPPING || state3 == VpnState.STOPPING
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val blockedCount: StateFlow<Int> = dnsLogDao.getBlockedCount()
@@ -118,18 +127,21 @@ class HomeViewModel(
 
     // Warn when protection is on in VPN mode but Android Private DNS (Strict
     // DoT) is active — it bypasses Hikari AdBlock' DNS interception, so filtering
-    // silently doesn't apply. Root Proxy mode disables Private DNS itself, so
-    // the warning is VPN-mode only (#145).
+    // silently doesn't apply. Root/Shizuku proxy modes disable Private DNS
+    // themselves, so the warning is VPN-mode only (#145).
     val privateDnsWarning: StateFlow<Boolean> = combine(
         vpnEnabled,
         routingMode,
         AdBlockVpnService.privateDnsStrict
     ) { enabled, mode, strict ->
-        enabled && mode != AppPreferences.ROUTING_MODE_ROOT && strict
+        enabled &&
+            mode != AppPreferences.ROUTING_MODE_ROOT &&
+            mode != AppPreferences.ROUTING_MODE_SHIZUKU &&
+            strict
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
-        // Uptime ticker — only ticks while VPN or Root Proxy is RUNNING
+        // Uptime ticker — only ticks while VPN, Root Proxy or Shizuku is RUNNING
         viewModelScope.launch {
             while (isActive) {
                 var uptime = 0L
@@ -137,6 +149,8 @@ class HomeViewModel(
                     uptime = System.currentTimeMillis() - AdBlockVpnService.startTimestamp
                 } else if (RootProxyService.isRunning && RootProxyService.startTimestamp > 0) {
                     uptime = System.currentTimeMillis() - RootProxyService.startTimestamp
+                } else if (ShizukuProxyService.isRunning && ShizukuProxyService.startTimestamp > 0) {
+                    uptime = System.currentTimeMillis() - ShizukuProxyService.startTimestamp
                 }
                 _protectionUptimeMs.value = uptime
                 delay(1000)
@@ -147,6 +161,9 @@ class HomeViewModel(
     fun stopVpn(context: Context) {
         if (RootProxyService.isRunning) {
             RootProxyService.stop(context)
+        }
+        if (ShizukuProxyService.isRunning) {
+            ShizukuProxyService.stop(context)
         }
         if (AdBlockVpnService.isRunning) {
             val intent = Intent(context, AdBlockVpnService::class.java).apply {

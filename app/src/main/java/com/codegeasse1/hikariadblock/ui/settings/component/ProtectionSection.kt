@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.codegeasse1.hikariadblock.R
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VpnKey
 
 @Composable
@@ -51,6 +52,7 @@ fun ProtectionSection(
     upstreamDNS: String,
     onSetAutoReconnect: (Boolean) -> Unit,
     onSetRoutingMode: (Boolean) -> Unit,
+    onSetShizukuMode: (Boolean) -> Unit,
     onSetNetworkSwitchDelayEnabled: (Boolean) -> Unit,
     onSetNetworkSwitchDelaySec: (Int) -> Unit,
     onSetSafeSearchEnabled: (Boolean) -> Unit,
@@ -91,6 +93,17 @@ fun ProtectionSection(
                     subtitle = stringResource(R.string.settings_root_proxy_desc),
                     isChecked = routingMode == AppPreferences.ROUTING_MODE_ROOT,
                     onCheckedChange = onSetRoutingMode
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                )
+                SettingsToggleItem(
+                    icon = Icons.Default.Terminal,
+                    title = stringResource(R.string.settings_shizuku),
+                    subtitle = stringResource(R.string.settings_shizuku_desc),
+                    isChecked = routingMode == AppPreferences.ROUTING_MODE_SHIZUKU,
+                    onCheckedChange = onSetShizukuMode
                 )
                 // Network Switch Delay
                 HorizontalDivider(
