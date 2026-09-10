@@ -32,6 +32,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.java.KoinJavaComponent.getKoin
 import timber.log.Timber
@@ -60,6 +62,11 @@ class ShizukuProxyService : Service() {
         const val ACTION_RESTART = "com.codegeasse1.hikariadblock.SHIZUKU_RESTART"
         const val ACTION_PAUSE_1H = "com.codegeasse1.hikariadblock.SHIZUKU_PAUSE_1H"
         const val EXTRA_STARTED_FROM_BOOT = "extra_started_from_boot"
+
+        /** Cap on the filter-loading phase. Slow/offline networks must never
+         *  leave the UI stuck on "Connecting…" — we proceed with whatever
+         *  loaded (or the cached set) once this elapses. */
+        private const val FILTER_LOAD_TIMEOUT_MS = 90_000L
 
         private val _state = kotlinx.coroutines.flow.MutableStateFlow(VpnState.STOPPED)
         val state: kotlinx.coroutines.flow.StateFlow<VpnState> = _state.asStateFlow()
@@ -105,6 +112,7 @@ class ShizukuProxyService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var watchdogJob: Job? = null
+    private var startWatchdogJob: Job? = null
     private var notificationUpdateJob: Job? = null
     private var retryManager = VpnRetryManager(maxRetries = 10, maxDelayMs = 60000L)
 
@@ -251,16 +259,27 @@ class ShizukuProxyService : Service() {
             maxDelayMs = 60000L
         )
 
+        // Hard safety net so the UI can never sit on "Connecting…" forever.
+        startStartWatchdog(startedFromBoot)
+
         serviceScope.launch {
             try {
-                // 1. Load filters (same as VPN mode)
-                filterRepo.loadWhitelist()
-                filterRepo.loadCustomRules()
-                filterRepo.setYoutubeAdBlocking(appPrefs.youtubeAdBlockEnabled.first())
-                filterRepo.seedDefaultsIfNeeded()
-                filterRepo.fetchAndSyncRemoteFilterLists()
-                val result = filterRepo.loadAllEnabledFilters()
-                Timber.d("Filters loaded for Shizuku mode: ${result.getOrDefault(0)} domains")
+                // 1. Load filters (same as VPN mode). Bounded so a slow or
+                // offline network can't leave us stuck in STARTING forever.
+                val filterLoadOk = withTimeoutOrNull(FILTER_LOAD_TIMEOUT_MS) {
+                    filterRepo.loadWhitelist()
+                    filterRepo.loadCustomRules()
+                    filterRepo.setYoutubeAdBlocking(appPrefs.youtubeAdBlockEnabled.first())
+                    // seedDefaultsIfNeeded() already performs the remote
+                    // filter sync — don't fetch it a second time here.
+                    filterRepo.seedDefaultsIfNeeded()
+                    val result = filterRepo.loadAllEnabledFilters()
+                    Timber.d("Filters loaded for Shizuku mode: ${result.getOrDefault(0)} domains")
+                    true
+                }
+                if (filterLoadOk == null) {
+                    Timber.w("Filter loading exceeded ${FILTER_LOAD_TIMEOUT_MS}ms — continuing with cached filters")
+                }
 
                 // 2. Setup engine parameters
                 val protocol = appPrefs.dnsProtocol.first().name
@@ -348,6 +367,7 @@ class ShizukuProxyService : Service() {
                 // /proc/net read could see them.
                 appNameResolver.startSnapshotter(serviceScope)
 
+                startWatchdogJob?.cancel()
                 _state.value = VpnState.RUNNING
                 if (!preserveUptimeOnRestart || startTimestamp == 0L) {
                     startTimestamp = System.currentTimeMillis()
@@ -360,10 +380,15 @@ class ShizukuProxyService : Service() {
 
                 // 4. Start watchdog
                 startWatchdog()
+            } catch (e: CancellationException) {
+                // Service/scope shutting down — let cancellation propagate.
+                throw e
             } catch (e: Exception) {
                 Timber.e(e, "Failed to start Shizuku mode")
-                ShizukuManager.teardownRules()
-                stopSelf()
+                // stopProxy() resets _state to STOPPED (fixes the bug where a
+                // failed start left the UI stuck on "Connecting…" forever).
+                stopProxy()
+                showStartFailedNotification()
             }
         }
     }
@@ -372,6 +397,7 @@ class ShizukuProxyService : Service() {
         Timber.d("Stopping Shizuku mode")
         _state.value = VpnState.STOPPING
         watchdogJob?.cancel()
+        startWatchdogJob?.cancel()
         stopNotificationUpdates()
         appNameResolver.stopSnapshotter()
 
@@ -443,6 +469,31 @@ class ShizukuProxyService : Service() {
     }
 
     /**
+     * Hard safety net for the start sequence. If it fails to reach RUNNING
+     * (or STOPPED) within the budget — e.g. a shell subsystem wedges in a
+     * way the per-command timeouts don't catch — force the state back to
+     * STOPPED and surface the start-failed notification. Without this, a
+     * failed start could leave the Home screen showing "Connecting…" forever.
+     */
+    private fun startStartWatchdog(startedFromBoot: Boolean) {
+        startWatchdogJob?.cancel()
+        val budgetMs = if (startedFromBoot) 10 * 60_000L else 4 * 60_000L
+        startWatchdogJob = serviceScope.launch {
+            delay(budgetMs)
+            if (_state.value == VpnState.STARTING) {
+                Timber.e("Start watchdog tripped after ${budgetMs}ms — forcing STOPPED")
+                ShizukuManager.teardownRules()
+                goTunnelAdapter.stop()
+                _state.value = VpnState.STOPPED
+                startTimestamp = 0L
+                stopForeground(STOP_FOREGROUND_DETACH)
+                showStartFailedNotification()
+                stopSelf()
+            }
+        }
+    }
+
+    /**
      * Watchdog monitors Go engine health every 10 seconds.
      * If the engine is dead, teardown iptables to prevent internet loss.
      */
@@ -474,6 +525,7 @@ class ShizukuProxyService : Service() {
         _state.value = VpnState.STOPPED
         startTimestamp = 0L
         watchdogJob?.cancel()
+        startWatchdogJob?.cancel()
         stopNotificationUpdates()
         if (::appNameResolver.isInitialized) appNameResolver.stopSnapshotter()
         ShizukuManager.teardownRules()

@@ -25,6 +25,7 @@ import com.codegeasse1.hikariadblock.service.IptablesManager
 import com.codegeasse1.hikariadblock.service.RootProxyService
 import com.codegeasse1.hikariadblock.service.ShizukuManager
 import com.codegeasse1.hikariadblock.service.ShizukuProxyService
+import com.codegeasse1.hikariadblock.utils.AppScope
 import com.codegeasse1.hikariadblock.ui.HikariAdBlockApp
 import com.codegeasse1.hikariadblock.ui.theme.HikariTheme
 import kotlinx.coroutines.flow.first
@@ -232,17 +233,20 @@ class MainActivity : ComponentActivity() {
                         ShizukuProxyService.start(this@MainActivity)
                     }
                 } else {
-                    // First-time grant — request it, then start once granted
-                    ShizukuManager.requestPermission { granted ->
+                    // Grant can outlive this Activity (the Shizuku app dialog
+                    // may background/destroy us), so wait on the application
+                    // scope, and poll checkSelfPermission rather than relying
+                    // solely on the result callback (Shevery bug).
+                    val activity = this@MainActivity
+                    AppScope.scope.launch {
+                        val granted = ShizukuManager.requestPermissionAndWait()
                         if (granted) {
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                ShizukuProxyService.start(this@MainActivity)
-                            }
+                            ShizukuProxyService.start(activity.applicationContext)
                         } else {
                             // Permission denied — fallback to Direct mode and request VPN permission
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
-                                withContext(Dispatchers.Main) {
+                            appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+                            withContext(Dispatchers.Main) {
+                                if (!activity.isFinishing && !activity.isDestroyed) {
                                     requestVpnPermission()
                                 }
                             }

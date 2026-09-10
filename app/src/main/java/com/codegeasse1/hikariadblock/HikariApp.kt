@@ -18,6 +18,7 @@ import timber.log.Timber
 import timber.log.Timber.DebugTree
 import com.codegeasse1.hikariadblock.utils.CrashReportingManager
 import com.codegeasse1.hikariadblock.utils.FileLoggingTree
+import com.codegeasse1.hikariadblock.service.ShizukuManager
 
 
 class HikariApp : Application() {
@@ -37,6 +38,11 @@ class HikariApp : Application() {
         
         // Plant File logging tree for all builds to allow log export
         Timber.plant(FileLoggingTree(this))
+
+        // Register the Shizuku permission-result listener once. The enable
+        // flow also polls checkSelfPermission, so granting still works on
+        // forks that don't deliver the callback (e.g. Shevery).
+        ShizukuManager.init()
 
         // Schedule auto-update for filter lists after Koin is initialized
         val appPreferences: AppPreferences by inject()

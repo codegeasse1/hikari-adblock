@@ -33,6 +33,7 @@ import com.codegeasse1.hikariadblock.service.IptablesManager
 import com.codegeasse1.hikariadblock.service.RootProxyService
 import com.codegeasse1.hikariadblock.service.ShizukuManager
 import com.codegeasse1.hikariadblock.service.ShizukuProxyService
+import com.codegeasse1.hikariadblock.utils.AppScope
 import com.codegeasse1.hikariadblock.utils.CrashReportingManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -135,6 +136,10 @@ class SettingsViewModel(
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
+    /** Latest user intent for the Shizuku toggle (set from the UI thread). */
+    @Volatile
+    private var shizukuToggleDesired: Boolean? = null
+
     init {
         viewModelScope.launch {
             filterRepo.seedDefaultsIfNeeded()
@@ -179,7 +184,15 @@ class SettingsViewModel(
     }
 
     fun setShizukuModeEnabled(enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
+        // Track the latest user intent so a slow permission grant can't flip
+        // the mode back on after the user already turned it off again.
+        shizukuToggleDesired = enabled
+
+        // Run on an application-lifetime scope, NOT viewModelScope: the
+        // Shizuku grant dialog (or a fork's dialog, e.g. Shevery) can send
+        // our Activity to the background and destroy the ViewModel, which
+        // would cancel a viewModelScope job before it could enable the mode.
+        AppScope.scope.launch {
             if (!enabled) {
                 applyRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
                 return@launch
@@ -192,19 +205,19 @@ class SettingsViewModel(
                 _events.toast(R.string.shizuku_not_available)
                 return@launch
             }
-            if (ShizukuManager.hasPermission()) {
-                applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+
+            val granted = if (ShizukuManager.hasPermission()) {
+                true
             } else {
-                // First-time grant — request it (dialog/Shizuku app), then enable
-                ShizukuManager.requestPermission { granted ->
-                    viewModelScope.launch(Dispatchers.IO) {
-                        if (granted) {
-                            applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
-                        } else {
-                            _events.toast(R.string.shizuku_permission_denied)
-                        }
-                    }
-                }
+                // Blocks until the grant is observed (result callback OR the
+                // checkSelfPermission polling fallback) or times out.
+                ShizukuManager.requestPermissionAndWait()
+            }
+
+            if (granted && shizukuToggleDesired == true) {
+                applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+            } else if (!granted) {
+                _events.toast(R.string.shizuku_permission_denied)
             }
         }
     }
