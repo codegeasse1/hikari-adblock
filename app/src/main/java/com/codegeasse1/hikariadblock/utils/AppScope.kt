@@ -1,8 +1,10 @@
 package com.codegeasse1.hikariadblock.utils
 
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import timber.log.Timber
 
 /**
  * Application-lifetime coroutine scope.
@@ -15,8 +17,16 @@ import kotlinx.coroutines.SupervisorJob
  * cancelled at that point, which is exactly why enabling Shizuku mode
  * sometimes appeared to do nothing even after the permission was allowed.
  *
+ * A [CoroutineExceptionHandler] is installed so that a failure here (e.g. a
+ * foreground-service start being refused because the app is in the
+ * background) is logged instead of crashing the app.
+ *
  * Never cancel this scope.
  */
 object AppScope {
-    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Timber.e(throwable, "Uncaught exception in AppScope")
+    }
+
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
 }

@@ -130,6 +130,39 @@ class MainActivity : ComponentActivity() {
         handleShortcutIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        retryPendingShizukuStart()
+    }
+
+    /**
+     * If a Shizuku enable was requested but the foreground-service start was
+     * blocked (Android 12+ background-start restriction) while the grant
+     * dialog was on screen, retry now that we are back in the foreground.
+     */
+    private fun retryPendingShizukuStart() {
+        if (!ShizukuManager.pendingEnable) return
+        if (ShizukuProxyService.isRunning) {
+            ShizukuManager.pendingEnable = false
+            return
+        }
+        val appPrefs: AppPreferences = getKoin().get()
+        lifecycleScope.launch(Dispatchers.IO) {
+            // The user may have switched away from Shizuku mode while the grant
+            // dialog was up — don't start it then.
+            if (appPrefs.routingMode.first() != AppPreferences.ROUTING_MODE_SHIZUKU) {
+                ShizukuManager.pendingEnable = false
+                return@launch
+            }
+            if (!ShizukuManager.isBinderAlive() || !ShizukuManager.hasPermission()) return@launch
+            withContext(Dispatchers.Main) {
+                if (ShizukuProxyService.start(this@MainActivity)) {
+                    ShizukuManager.pendingEnable = false
+                }
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -229,22 +262,43 @@ class MainActivity : ComponentActivity() {
                         requestVpnPermission()
                     }
                 } else if (ShizukuManager.hasPermission()) {
+                    ShizukuManager.pendingEnable = true
                     withContext(Dispatchers.Main) {
-                        ShizukuProxyService.start(this@MainActivity)
+                        if (ShizukuProxyService.start(this@MainActivity)) {
+                            ShizukuManager.pendingEnable = false
+                        }
                     }
                 } else {
                     // Grant can outlive this Activity (the Shizuku app dialog
                     // may background/destroy us), so wait on the application
                     // scope, and poll checkSelfPermission rather than relying
                     // solely on the result callback (Shevery bug).
+                    //
+                    // Create the foreground service *before* showing the grant
+                    // dialog: the dialog backgrounds the app, and Android 12+
+                    // blocks starting a foreground service from the background,
+                    // which silently left the mode off after the user tapped
+                    // Allow. The service waits for the grant before applying
+                    // rules, and onResume() retries if the start was refused.
+                    ShizukuManager.pendingEnable = true
+                    withContext(Dispatchers.Main) {
+                        ShizukuProxyService.start(this@MainActivity)
+                    }
                     val activity = this@MainActivity
                     AppScope.scope.launch {
                         val granted = ShizukuManager.requestPermissionAndWait()
                         if (granted) {
-                            ShizukuProxyService.start(activity.applicationContext)
+                            // Nudge the (already started) service in case it
+                            // gave up waiting; retrying from the app context is
+                            // fine now that the FGS is alive.
+                            if (ShizukuProxyService.start(activity.applicationContext)) {
+                                ShizukuManager.pendingEnable = false
+                            }
                         } else {
                             // Permission denied — fallback to Direct mode and request VPN permission
+                            ShizukuManager.pendingEnable = false
                             appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+                            ShizukuProxyService.stop(activity.applicationContext)
                             withContext(Dispatchers.Main) {
                                 if (!activity.isFinishing && !activity.isDestroyed) {
                                     requestVpnPermission()

@@ -194,6 +194,7 @@ class SettingsViewModel(
         // would cancel a viewModelScope job before it could enable the mode.
         AppScope.scope.launch {
             if (!enabled) {
+                ShizukuManager.pendingEnable = false
                 applyRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
                 return@launch
             }
@@ -206,17 +207,35 @@ class SettingsViewModel(
                 return@launch
             }
 
-            val granted = if (ShizukuManager.hasPermission()) {
-                true
-            } else {
-                // Blocks until the grant is observed (result callback OR the
-                // checkSelfPermission polling fallback) or times out.
-                ShizukuManager.requestPermissionAndWait()
+            if (ShizukuManager.hasPermission()) {
+                if (shizukuToggleDesired == true) {
+                    applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+                }
+                return@launch
             }
+
+            // No permission yet. If protection is already running in another
+            // mode we will switch to Shizuku once the grant arrives — remember
+            // that, so that if the grant dialog backgrounds us and Android 12+
+            // blocks the foreground-service start, it is retried on resume.
+            val protectionRunning = AdBlockVpnService.isRunning || RootProxyService.isRunning
+            if (protectionRunning && shizukuToggleDesired == true) {
+                ShizukuManager.pendingEnable = true
+            }
+
+            // Blocks until the grant is observed (result callback OR the
+            // checkSelfPermission polling fallback) or times out.
+            val granted = ShizukuManager.requestPermissionAndWait()
 
             if (granted && shizukuToggleDesired == true) {
                 applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+                if (!protectionRunning) {
+                    // Nothing was running, so the mode is only selected — there
+                    // is no foreground service to (re)start.
+                    ShizukuManager.pendingEnable = false
+                }
             } else if (!granted) {
+                ShizukuManager.pendingEnable = false
                 _events.toast(R.string.shizuku_permission_denied)
             }
         }

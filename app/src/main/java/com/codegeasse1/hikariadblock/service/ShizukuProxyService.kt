@@ -68,6 +68,13 @@ class ShizukuProxyService : Service() {
          *  loaded (or the cached set) once this elapses. */
         private const val FILTER_LOAD_TIMEOUT_MS = 90_000L
 
+        /**
+         * How long the service waits for a not-yet-visible Shizuku grant
+         * before giving up. Covers a just-granted permission that hasn't
+         * propagated yet, so the start doesn't fail spuriously.
+         */
+        private const val PERMISSION_WAIT_MS = 90_000L
+
         private val _state = kotlinx.coroutines.flow.MutableStateFlow(VpnState.STOPPED)
         val state: kotlinx.coroutines.flow.StateFlow<VpnState> = _state.asStateFlow()
 
@@ -77,18 +84,30 @@ class ShizukuProxyService : Service() {
         var startTimestamp: Long = 0L
             private set
 
-        fun start(context: Context) {
+        fun start(context: Context): Boolean {
             val intent = Intent(context, ShizukuProxyService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            return try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                true
+            } catch (e: Exception) {
+                // On Android 12+ starting a foreground service from the
+                // background throws ForegroundServiceStartNotAllowedException.
+                // This happens when the Shizuku grant dialog moved our app to
+                // the background before we tried to start. The caller keeps
+                // ShizukuManager.pendingEnable set and retries on resume.
+                Timber.e(e, "Could not start ShizukuProxyService (blocked from background?)")
+                false
             }
         }
 
         fun stop(context: Context) {
+            ShizukuManager.pendingEnable = false
             val intent = Intent(context, ShizukuProxyService::class.java).apply {
                 action = ACTION_STOP
             }
@@ -321,6 +340,16 @@ class ShizukuProxyService : Service() {
                 // 3. Retry loop for Standalone mode and IPTables setup
                 // Shizuku can take a moment to come up on boot — keep trying
                 // within the retry budget.
+                //
+                // If the enable flow started us *before* showing the Shizuku
+                // grant dialog (to dodge Android 12+'s background FGS-start
+                // restriction), the dialog may still be on screen — wait for
+                // the grant here instead of failing the whole start.
+                if (ShizukuManager.isBinderAlive() && !ShizukuManager.hasPermission()) {
+                    Timber.d("Waiting up to ${PERMISSION_WAIT_MS}ms for Shizuku permission grant")
+                    ShizukuManager.waitForPermissionGrant(PERMISSION_WAIT_MS)
+                }
+
                 var proxyStarted = false
                 while (!proxyStarted && retryManager.shouldRetry()) {
                     // Shizuku must be running and permission granted for
@@ -369,6 +398,7 @@ class ShizukuProxyService : Service() {
 
                 startWatchdogJob?.cancel()
                 _state.value = VpnState.RUNNING
+                ShizukuManager.pendingEnable = false
                 if (!preserveUptimeOnRestart || startTimestamp == 0L) {
                     startTimestamp = System.currentTimeMillis()
                 }

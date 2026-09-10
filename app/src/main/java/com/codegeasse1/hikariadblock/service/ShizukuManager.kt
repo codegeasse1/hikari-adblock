@@ -63,6 +63,15 @@ object ShizukuManager {
     private val initialized = AtomicBoolean(false)
 
     /**
+     * True while the user has asked to enable Shizuku mode but we have not yet
+     * managed to start [ShizukuProxyService] (e.g. the foreground-service start
+     * was blocked because the grant dialog backgrounded us). The UI checks this
+     * on resume so the start can be retried from a foreground context.
+     */
+    @Volatile
+    var pendingEnable: Boolean = false
+
+    /**
      * Register a permanent permission-result listener. Call once from
      * [com.codegeasse1.hikariadblock.HikariApp.onCreate].
      *
@@ -178,6 +187,32 @@ object ShizukuManager {
             name = "shizuku-permission"
             isDaemon = true
         }.start()
+    }
+
+    /**
+     * Block (background thread) until the permission is observed as granted,
+     * the binder dies, or [timeoutMs] elapses.
+     *
+     * Used by [ShizukuProxyService] as a safety net: if it is (re)started
+     * while no grant is visible yet — e.g. a just-granted permission that has
+     * not propagated, or a boot/widget start — it waits here instead of burning
+     * its short retry budget and giving up. MUST be called from a background
+     * thread.
+     */
+    fun waitForPermissionGrant(timeoutMs: Long = PERMISSION_TIMEOUT_MS): Boolean {
+        if (hasPermission()) return true
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (hasPermission()) return true
+            if (!isBinderAlive()) return false
+            try {
+                Thread.sleep(PERMISSION_POLL_INTERVAL_MS)
+            } catch (ie: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return hasPermission()
+            }
+        }
+        return hasPermission()
     }
 
     /**
