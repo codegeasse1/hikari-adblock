@@ -17,8 +17,8 @@ android {
         applicationId = "com.codegeasse1.hikariadblock"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.2.3"
+        versionCode = 7
+        versionName = "1.2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

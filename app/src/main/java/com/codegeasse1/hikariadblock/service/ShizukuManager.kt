@@ -253,21 +253,68 @@ object ShizukuManager {
     }
 
     /**
-     * A set of commands that can actually manipulate the kernel's netfilter
-     * tables. Tried in order:
-     *  - `iptables`/`ip6tables` — the legacy path; works for root and on most
-     *    stock/AOSP ROMs.
-     *  - `iptables-nft`/`ip6tables-nft` — the nftables-backed variant, which
-     *    works on kernels that dropped legacy netfilter support. This is the
-     *    second option that rescues many devices where the legacy binary
-     *    reports "Permission denied (you must be root)".
+     * A way of actually manipulating the kernel's netfilter tables. Tried in
+     * order until one verifiably works (see [FIREWALL_BACKENDS]):
+     *
+     *  - `iptables-legacy`  — the `iptables`/`ip6tables` binaries; work for root
+     *    and on most stock/AOSP ROMs.
+     *  - `iptables-nft`     — the `iptables-nft`/`ip6tables-nft` variant, for
+     *    kernels that dropped legacy netfilter support.
+     *  - `nftables`         — native `nft` commands talking straight to the
+     *    kernel over netlink (see [NftablesManager]). Uses a different kernel
+     *    entry point / SELinux permission than the two iptables paths, so it
+     *    can succeed on ROMs that refuse the iptables ioctl path.
      */
-    private data class FirewallBackend(val bin: String, val bin6: String, val label: String)
+    private class FirewallBackend(
+        val label: String,
+        val probeCommand: String,
+        val setupCommands: (Context, Boolean, Collection<Int>) -> List<String>,
+        val teardownCommands: () -> List<String>,
+        val activeCheckCommand: String,
+        val activeMarker: String,
+    )
 
     private val FIREWALL_BACKENDS = listOf(
-        FirewallBackend(IptablesManager.BIN_IPV4, IptablesManager.BIN_IPV6, "iptables-legacy"),
-        FirewallBackend(IptablesManager.BIN_NFT_IPV4, IptablesManager.BIN_NFT_IPV6, "iptables-nft"),
+        FirewallBackend(
+            label = "iptables-legacy",
+            probeCommand = binaryProbe(IptablesManager.BIN_IPV4),
+            setupCommands = { ctx, blockDoT, wl ->
+                IptablesManager.buildSetupCommandsIpv4(ctx, blockDoT, wl, bin = IptablesManager.BIN_IPV4) +
+                    IptablesManager.buildSetupCommandsIpv6(ctx, blockDoT, wl, bin6 = IptablesManager.BIN_IPV6)
+            },
+            teardownCommands = {
+                IptablesManager.buildTeardownCommands(IptablesManager.BIN_IPV4, IptablesManager.BIN_IPV6)
+            },
+            activeCheckCommand = "${IptablesManager.BIN_IPV4} -t nat -L OUTPUT -n 2>/dev/null",
+            activeMarker = IptablesManager.CHAIN,
+        ),
+        FirewallBackend(
+            label = "iptables-nft",
+            probeCommand = binaryProbe(IptablesManager.BIN_NFT_IPV4),
+            setupCommands = { ctx, blockDoT, wl ->
+                IptablesManager.buildSetupCommandsIpv4(ctx, blockDoT, wl, bin = IptablesManager.BIN_NFT_IPV4) +
+                    IptablesManager.buildSetupCommandsIpv6(ctx, blockDoT, wl, bin6 = IptablesManager.BIN_NFT_IPV6)
+            },
+            teardownCommands = {
+                IptablesManager.buildTeardownCommands(IptablesManager.BIN_NFT_IPV4, IptablesManager.BIN_NFT_IPV6)
+            },
+            activeCheckCommand = "${IptablesManager.BIN_NFT_IPV4} -t nat -L OUTPUT -n 2>/dev/null",
+            activeMarker = IptablesManager.CHAIN,
+        ),
+        FirewallBackend(
+            label = "nftables",
+            probeCommand = binaryProbe(NftablesManager.BIN),
+            setupCommands = { ctx, blockDoT, wl ->
+                NftablesManager.buildSetupCommands(ctx, blockDoT, wl)
+            },
+            teardownCommands = { NftablesManager.buildTeardownCommands() },
+            activeCheckCommand = NftablesManager.activeCheckCommand(),
+            activeMarker = NftablesManager.ACTIVE_MARKER,
+        ),
     )
+
+    private fun binaryProbe(bin: String): String =
+        "command -v $bin >/dev/null 2>&1 || $bin --version >/dev/null 2>&1"
 
     @Volatile
     private var activeBackend: FirewallBackend? = null
@@ -277,15 +324,15 @@ object ShizukuManager {
 
     /**
      * stderr fingerprints that mean "this identity may not touch netfilter" —
-     * as opposed to a rule syntax problem, which retrying could fix.
+     * as opposed to a rule syntax problem or a missing table (both of which
+     * retrying/another backend could fix). Deliberately narrow so that e.g.
+     * "can't initialize ip6tables table `nat': Table does not exist", which is
+     * normal on kernels without IPv6 NAT, is NOT mistaken for a ROM block.
      */
     private val BLOCKED_PATTERNS = listOf(
         "Permission denied",
         "you must be root",
-        "can't initialize iptables table",
-        "can't initialize ip6tables table",
         "Operation not permitted",
-        "not permitted",
     )
 
     private fun looksBlocked(output: String): Boolean =
@@ -366,17 +413,14 @@ object ShizukuManager {
         ""
     }
 
-    /** True if `bin` exists on the device (checked through Shizuku's shell). */
-    private fun binaryExists(bin: String): Boolean =
-        exec("command -v $bin >/dev/null 2>&1 || $bin --version >/dev/null 2>&1").ok
+    /** True if a backend's binary exists on the device (checked through Shizuku's shell). */
+    private fun binaryExists(backend: FirewallBackend): Boolean =
+        exec(backend.probeCommand).ok
 
     /** Check if our rules are active using a specific backend. */
     private fun isActive(backend: FirewallBackend): Boolean {
-        val result = exec(
-            "${backend.bin} -t nat -L OUTPUT -n 2>/dev/null | grep ${IptablesManager.CHAIN}",
-            logErrors = false
-        )
-        return result.output.contains(IptablesManager.CHAIN)
+        val result = exec(backend.activeCheckCommand, logErrors = false)
+        return result.output.contains(backend.activeMarker)
     }
 
     /**
@@ -390,16 +434,12 @@ object ShizukuManager {
         blockDoT: Boolean,
         whitelistUids: Collection<Int>
     ): BackendOutcome {
-        if (!binaryExists(backend.bin)) {
+        if (!binaryExists(backend)) {
             Timber.d("Shizuku firewall backend ${backend.label} not present on device")
             return BackendOutcome.UNAVAILABLE
         }
 
-        val commands = IptablesManager.buildSetupCommandsIpv4(
-            context, blockDoT, whitelistUids, bin = backend.bin
-        ) + IptablesManager.buildSetupCommandsIpv6(
-            context, blockDoT, whitelistUids, bin6 = backend.bin6
-        )
+        val commands = backend.setupCommands(context, blockDoT, whitelistUids)
 
         var blocked = false
         val deadline = System.currentTimeMillis() + SETUP_TIMEOUT_MS
@@ -435,7 +475,8 @@ object ShizukuManager {
 
     /**
      * Apply the DNS redirect rules via Shizuku, trying each available firewall
-     * backend until one verifiably works (legacy `iptables`, then `iptables-nft`).
+     * backend until one verifiably works (legacy `iptables`, then `iptables-nft`,
+     * then native `nft`).
      *
      * Mirrors [IptablesManager.setupRules] semantics: each command runs
      * individually, IPv6 failures are tolerated, and success requires the
@@ -492,7 +533,7 @@ object ShizukuManager {
     }
 
     private fun teardownBackend(backend: FirewallBackend) {
-        for (cmd in IptablesManager.buildTeardownCommands(backend.bin, backend.bin6)) {
+        for (cmd in backend.teardownCommands()) {
             if (exec(cmd, logErrors = false).timedOut) break
         }
     }
