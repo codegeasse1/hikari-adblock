@@ -93,6 +93,11 @@ jobs:
 
       - name: Build release APK
         run: ./gradlew :app:assembleRelease
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.SIGNING_KEY }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -107,6 +112,23 @@ jobs:
           name: hikari-adblock-release
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
+
+      - name: Verify release APK signature
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER="$(find "$SDK/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          echo "Using apksigner: $APKSIGNER"
+          fail=0
+          for apk in app/build/outputs/apk/release/*.apk; do
+            echo "===== $apk ====="
+            certs="$("$APKSIGNER" verify --print-certs "$apk" 2>&1)" || { echo "$certs"; fail=1; continue; }
+            echo "$certs"
+            if echo "$certs" | grep -qi "Android Debug"; then
+              echo "::error file=$apk::Release APK is signed with the Android Debug key, not the release signing key!"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then exit 1; fi
 
   release:
     name: Publish signed release
@@ -144,6 +166,23 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Verify release APK signature
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER="$(find "$SDK/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          echo "Using apksigner: $APKSIGNER"
+          fail=0
+          for apk in app/build/outputs/apk/release/*.apk; do
+            echo "===== $apk ====="
+            certs="$("$APKSIGNER" verify --print-certs "$apk" 2>&1)" || { echo "$certs"; fail=1; continue; }
+            echo "$certs"
+            if echo "$certs" | grep -qi "Android Debug"; then
+              echo "::error file=$apk::Release APK is signed with the Android Debug key, not the release signing key!"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then exit 1; fi
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
