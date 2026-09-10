@@ -84,6 +84,21 @@ class ShizukuProxyService : Service() {
         var startTimestamp: Long = 0L
             private set
 
+        private val _iptablesBlocked = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+        /**
+         * True when the device/ROM refuses shell-level netfilter access on every
+         * backend, so Shizuku mode cannot work here. Surfaced to the UI as an
+         * immediate, actionable error instead of an endless "Connecting…".
+         * Cleared on a new start attempt, on stop, or when the user dismisses it.
+         */
+        val iptablesBlocked: kotlinx.coroutines.flow.StateFlow<Boolean> =
+            _iptablesBlocked.asStateFlow()
+
+        fun dismissIptablesBlocked() {
+            _iptablesBlocked.value = false
+        }
+
         fun start(context: Context): Boolean {
             val intent = Intent(context, ShizukuProxyService::class.java).apply {
                 action = ACTION_START
@@ -108,6 +123,7 @@ class ShizukuProxyService : Service() {
 
         fun stop(context: Context) {
             ShizukuManager.pendingEnable = false
+            _iptablesBlocked.value = false
             val intent = Intent(context, ShizukuProxyService::class.java).apply {
                 action = ACTION_STOP
             }
@@ -266,6 +282,10 @@ class ShizukuProxyService : Service() {
             return
         }
         
+        // Fresh attempt — clear any stale "iptables blocked" error so the
+        // dialog can surface again if this attempt also hits it.
+        _iptablesBlocked.value = false
+
         _state.value = VpnState.STARTING
 
         createNotificationChannel()
@@ -351,7 +371,11 @@ class ShizukuProxyService : Service() {
                 }
 
                 var proxyStarted = false
-                while (!proxyStarted && retryManager.shouldRetry()) {
+                // When the device blocks shell netfilter access on every
+                // backend, retrying is pointless — bail out immediately with a
+                // clear, actionable error instead of looping 10 times.
+                var iptablesBlocked = false
+                while (!proxyStarted && !iptablesBlocked && retryManager.shouldRetry()) {
                     // Shizuku must be running and permission granted for
                     // shell-level iptables. Both are re-checked on every
                     // retry (Shizuku can be restarted mid-attempt).
@@ -365,18 +389,32 @@ class ShizukuProxyService : Service() {
                         ShizukuManager.waitForBinder()
                         val engineStarted = goTunnelAdapter.startStandalone(port = 15353)
                         if (engineStarted) {
-                            if (ShizukuManager.setupRules(this@ShizukuProxyService, whitelistUids = whitelistedUids)) {
-                                proxyStarted = true
-                            } else {
-                                goTunnelAdapter.stop() // stop engine if iptables fails
+                            when (ShizukuManager.setupRules(this@ShizukuProxyService, whitelistUids = whitelistedUids)) {
+                                ShizukuManager.SetupResult.SUCCESS -> proxyStarted = true
+                                ShizukuManager.SetupResult.BLOCKED -> {
+                                    // ROM denies shell-level iptables/nft entirely.
+                                    iptablesBlocked = true
+                                    goTunnelAdapter.stop()
+                                }
+                                ShizukuManager.SetupResult.FAILED -> {
+                                    goTunnelAdapter.stop() // stop engine if iptables fails
+                                }
                             }
                         }
                     }
 
-                    if (!proxyStarted && retryManager.shouldRetry()) {
+                    if (!proxyStarted && !iptablesBlocked && retryManager.shouldRetry()) {
                          Timber.w("Shizuku establishment failed, retrying... (${retryManager.getRetryCount()}/${retryManager.getMaxRetries()})")
                          retryManager.waitForRetry()
                     }
+                }
+
+                if (iptablesBlocked) {
+                    Timber.e("Shizuku mode unavailable: device blocks shell iptables on all backends")
+                    stopProxy()
+                    showIptablesBlockedNotification()
+                    _iptablesBlocked.value = true
+                    return@launch
                 }
 
                 if (!proxyStarted) {
@@ -739,6 +777,42 @@ class ShizukuProxyService : Service() {
                     null, getString(R.string.vpn_stopped_action_enable), retryPendingIntent
                 ).build()
             )
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Shown when the device/ROM refuses shell-level netfilter access on every
+     * backend. Unlike the generic start-failed notification, this tells the
+     * user the exact cause and the two ways out (root backend / Direct mode).
+     */
+    private fun showIptablesBlockedNotification() {
+        createNotificationChannel()
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+
+        val notification = builder
+            .setContentTitle(getString(R.string.shizuku_iptables_blocked_title))
+            .setContentText(getString(R.string.shizuku_iptables_blocked_text))
+            .setStyle(Notification.BigTextStyle().bigText(getString(R.string.shizuku_iptables_blocked_text)))
+            .setSmallIcon(R.drawable.ic_shield_off)
+            .setOngoing(false)
+            .setContentIntent(pendingIntent)
             .build()
 
         val notificationManager = getSystemService(NotificationManager::class.java)

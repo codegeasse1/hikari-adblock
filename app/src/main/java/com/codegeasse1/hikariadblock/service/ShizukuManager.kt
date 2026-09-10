@@ -236,6 +236,63 @@ object ShizukuManager {
         return isBinderAlive()
     }
 
+    /** Outcome of a Shizuku iptables setup attempt. */
+    enum class SetupResult {
+        /** Rules were applied and verified — the proxy can run. */
+        SUCCESS,
+
+        /**
+         * Every available firewall backend was refused by the device/ROM
+         * (shell netfilter access denied). Retrying cannot help, so the caller
+         * should surface an actionable error instead of looping.
+         */
+        BLOCKED,
+
+        /** A (likely transient) failure — worth retrying. */
+        FAILED,
+    }
+
+    /**
+     * A set of commands that can actually manipulate the kernel's netfilter
+     * tables. Tried in order:
+     *  - `iptables`/`ip6tables` — the legacy path; works for root and on most
+     *    stock/AOSP ROMs.
+     *  - `iptables-nft`/`ip6tables-nft` — the nftables-backed variant, which
+     *    works on kernels that dropped legacy netfilter support. This is the
+     *    second option that rescues many devices where the legacy binary
+     *    reports "Permission denied (you must be root)".
+     */
+    private data class FirewallBackend(val bin: String, val bin6: String, val label: String)
+
+    private val FIREWALL_BACKENDS = listOf(
+        FirewallBackend(IptablesManager.BIN_IPV4, IptablesManager.BIN_IPV6, "iptables-legacy"),
+        FirewallBackend(IptablesManager.BIN_NFT_IPV4, IptablesManager.BIN_NFT_IPV6, "iptables-nft"),
+    )
+
+    @Volatile
+    private var activeBackend: FirewallBackend? = null
+
+    /** Human-readable label of the backend that last applied the rules. */
+    val lastUsedBackend: String? get() = activeBackend?.label
+
+    /**
+     * stderr fingerprints that mean "this identity may not touch netfilter" —
+     * as opposed to a rule syntax problem, which retrying could fix.
+     */
+    private val BLOCKED_PATTERNS = listOf(
+        "Permission denied",
+        "you must be root",
+        "can't initialize iptables table",
+        "can't initialize ip6tables table",
+        "Operation not permitted",
+        "not permitted",
+    )
+
+    private fun looksBlocked(output: String): Boolean =
+        BLOCKED_PATTERNS.any { output.contains(it, ignoreCase = true) }
+
+    private enum class BackendOutcome { SUCCESS, BLOCKED, FAILED, UNAVAILABLE }
+
     private data class ExecResult(
         val ok: Boolean,
         val timedOut: Boolean,
@@ -309,60 +366,141 @@ object ShizukuManager {
         ""
     }
 
+    /** True if `bin` exists on the device (checked through Shizuku's shell). */
+    private fun binaryExists(bin: String): Boolean =
+        exec("command -v $bin >/dev/null 2>&1 || $bin --version >/dev/null 2>&1").ok
+
+    /** Check if our rules are active using a specific backend. */
+    private fun isActive(backend: FirewallBackend): Boolean {
+        val result = exec(
+            "${backend.bin} -t nat -L OUTPUT -n 2>/dev/null | grep ${IptablesManager.CHAIN}",
+            logErrors = false
+        )
+        return result.output.contains(IptablesManager.CHAIN)
+    }
+
     /**
-     * Apply the DNS redirect rules via Shizuku. Mirrors
-     * [IptablesManager.setupRules] semantics: each command runs
+     * Try to apply and verify the full rule set with one backend.
+     * The overall budget is per-backend so a wedged shell aborts cleanly and
+     * the next backend still gets a chance.
+     */
+    private fun tryBackend(
+        backend: FirewallBackend,
+        context: Context,
+        blockDoT: Boolean,
+        whitelistUids: Collection<Int>
+    ): BackendOutcome {
+        if (!binaryExists(backend.bin)) {
+            Timber.d("Shizuku firewall backend ${backend.label} not present on device")
+            return BackendOutcome.UNAVAILABLE
+        }
+
+        val commands = IptablesManager.buildSetupCommandsIpv4(
+            context, blockDoT, whitelistUids, bin = backend.bin
+        ) + IptablesManager.buildSetupCommandsIpv6(
+            context, blockDoT, whitelistUids, bin6 = backend.bin6
+        )
+
+        var blocked = false
+        val deadline = System.currentTimeMillis() + SETUP_TIMEOUT_MS
+        for (cmd in commands) {
+            if (System.currentTimeMillis() > deadline) {
+                Timber.e("Shizuku ${backend.label} setup exceeded ${SETUP_TIMEOUT_MS}ms — aborting backend")
+                return BackendOutcome.FAILED
+            }
+            val result = exec(cmd)
+            if (result.timedOut) {
+                // A hung command means the shell/subsystem is wedged — don't
+                // queue more commands behind it.
+                return BackendOutcome.FAILED
+            }
+            if (!result.ok && looksBlocked(result.output)) blocked = true
+        }
+
+        return when {
+            isActive(backend) -> {
+                Timber.d("Shizuku iptables rules verified active via ${backend.label}")
+                BackendOutcome.SUCCESS
+            }
+            blocked -> {
+                Timber.w("Shizuku backend ${backend.label} refused by device (shell netfilter access denied)")
+                BackendOutcome.BLOCKED
+            }
+            else -> {
+                Timber.w("Shizuku iptables rules NOT active after ${backend.label} setup")
+                BackendOutcome.FAILED
+            }
+        }
+    }
+
+    /**
+     * Apply the DNS redirect rules via Shizuku, trying each available firewall
+     * backend until one verifiably works (legacy `iptables`, then `iptables-nft`).
+     *
+     * Mirrors [IptablesManager.setupRules] semantics: each command runs
      * individually, IPv6 failures are tolerated, and success requires the
      * rules to be verifiably active.
      *
-     * Aborts early if a command times out (the shell is wedged) or the
-     * overall budget is exceeded, so the caller can never hang here.
+     * Returns [SetupResult.BLOCKED] when every backend was refused by the
+     * ROM (e.g. "Permission denied (you must be root)") — retrying cannot
+     * help there, so the caller can show an immediate, actionable error
+     * instead of staying on "Connecting…".
      */
     fun setupRules(
         context: Context,
         blockDoT: Boolean = true,
         whitelistUids: Collection<Int> = emptyList()
-    ): Boolean {
+    ): SetupResult {
         Timber.d("Setting up Shizuku iptables rules (blockDoT=$blockDoT, whitelistUids=$whitelistUids)")
 
-        // Always teardown first (idempotent)
+        // Always teardown first (idempotent, and clears rules left by either backend)
         teardownRules()
 
-        val commands = IptablesManager.buildSetupCommandsIpv4(context, blockDoT, whitelistUids) +
-            IptablesManager.buildSetupCommandsIpv6(context, blockDoT, whitelistUids)
-
-        val deadline = System.currentTimeMillis() + SETUP_TIMEOUT_MS
-        for (cmd in commands) {
-            if (System.currentTimeMillis() > deadline) {
-                Timber.e("Shizuku rule setup exceeded ${SETUP_TIMEOUT_MS}ms — aborting")
-                return false
+        var sawBlocked = false
+        for (backend in FIREWALL_BACKENDS) {
+            when (tryBackend(backend, context, blockDoT, whitelistUids)) {
+                BackendOutcome.SUCCESS -> {
+                    activeBackend = backend
+                    Timber.d("Shizuku rules active via ${backend.label}")
+                    return SetupResult.SUCCESS
+                }
+                BackendOutcome.BLOCKED -> sawBlocked = true
+                BackendOutcome.UNAVAILABLE -> Unit // try the next backend
+                BackendOutcome.FAILED -> Unit // try the next backend
             }
-            if (exec(cmd).timedOut) {
-                // A hung command means the shell/subsystem is wedged — don't
-                // queue more commands behind it.
-                return false
-            }
+            // Clean up any partial state before trying the next backend
+            teardownBackend(backend)
         }
 
-        val verified = isActive()
-        Timber.d("Shizuku iptables rules ${if (verified) "verified active" else "NOT active after setup"}")
-        return verified
+        activeBackend = null
+        return if (sawBlocked) {
+            Timber.e("All Shizuku firewall backends refused by device — shell iptables is blocked here")
+            SetupResult.BLOCKED
+        } else {
+            SetupResult.FAILED
+        }
     }
 
-    /** Remove all Hikari AdBlock iptables rules and restore Private DNS. */
+    /**
+     * Remove all Hikari AdBlock rules and restore Private DNS. Tears down on
+     * every backend, so it also cleans rules left by a previous process run
+     * that used a different backend. Safe/idempotent.
+     */
     fun teardownRules() {
-        for (cmd in IptablesManager.buildTeardownCommands()) {
+        for (backend in FIREWALL_BACKENDS) teardownBackend(backend)
+        Timber.d("Shizuku iptables teardown done, Private DNS restored")
+    }
+
+    private fun teardownBackend(backend: FirewallBackend) {
+        for (cmd in IptablesManager.buildTeardownCommands(backend.bin, backend.bin6)) {
             if (exec(cmd, logErrors = false).timedOut) break
         }
-        Timber.d("Shizuku iptables teardown done, Private DNS restored")
     }
 
     /** Check if our iptables rules are currently active (via Shizuku). */
     fun isActive(): Boolean {
-        val result = exec(
-            "iptables -t nat -L OUTPUT -n 2>/dev/null | grep ${IptablesManager.CHAIN}",
-            logErrors = false
-        )
-        return result.output.contains(IptablesManager.CHAIN)
+        val backend = activeBackend
+        if (backend != null) return isActive(backend)
+        return FIREWALL_BACKENDS.any { isActive(it) }
     }
 }

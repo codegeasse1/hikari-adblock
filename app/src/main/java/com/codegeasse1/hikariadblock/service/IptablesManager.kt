@@ -16,12 +16,22 @@ import timber.log.Timber
  * - nat table:    REDIRECT port 53 → 15353 (DNS interception)
  * - filter table: DROP port 853 (block DoT to force plain DNS)
  * - settings:     Disable Android Private DNS (forces port 53 fallback)
+ *
+ * The command builders take an optional `bin`/`bin6` so the same rules can be
+ * emitted for the legacy `iptables` binary (root, and most Shizuku devices) or
+ * for the nftables-backed `iptables-nft` variant (see [ShizukuManager], which
+ * falls back to it on ROMs whose kernel dropped legacy netfilter support).
  */
 object IptablesManager {
 
     const val CHAIN = "BLOCKADS_DNS"
     private const val CHAIN_FILTER = "BLOCKADS_DOT"
     private const val LOCAL_DNS_PORT = 15353
+
+    const val BIN_IPV4 = "iptables"
+    const val BIN_IPV6 = "ip6tables"
+    const val BIN_NFT_IPV4 = "iptables-nft"
+    const val BIN_NFT_IPV6 = "ip6tables-nft"
 
     /**
      * Ensure the cached libsu main shell actually has root.
@@ -68,11 +78,13 @@ object IptablesManager {
      * @param context App context (used to get UID)
      * @param blockDoT If true, blocks DoT (port 853) to force DNS fallback to port 53
      * @param whitelistUids UIDs of whitelisted apps whose DNS must bypass the redirect
+     * @param bin The iptables binary to use (`iptables` or `iptables-nft`)
      */
     fun buildSetupCommandsIpv4(
         context: Context,
         blockDoT: Boolean = true,
-        whitelistUids: Collection<Int> = emptyList()
+        whitelistUids: Collection<Int> = emptyList(),
+        bin: String = BIN_IPV4
     ): List<String> {
         val uid = context.applicationInfo.uid
         val commands = mutableListOf<String>()
@@ -83,29 +95,29 @@ object IptablesManager {
         commands += "settings put global private_dns_mode off"
 
         // Step 1: nat table — REDIRECT port 53 → local engine
-        commands += "iptables -t nat -N $CHAIN 2>/dev/null || true"
+        commands += "$bin -t nat -N $CHAIN 2>/dev/null || true"
         // Skip our own app's traffic (prevents infinite loop)
-        commands += "iptables -t nat -A $CHAIN -m owner --uid-owner $uid -j RETURN"
+        commands += "$bin -t nat -A $CHAIN -m owner --uid-owner $uid -j RETURN"
         // Skip whitelisted apps — their DNS goes straight upstream
         for (wUid in whitelistUids) {
-            commands += "iptables -t nat -A $CHAIN -m owner --uid-owner $wUid -j RETURN"
+            commands += "$bin -t nat -A $CHAIN -m owner --uid-owner $wUid -j RETURN"
         }
         // Redirect UDP DNS → local engine
-        commands += "iptables -t nat -A $CHAIN -p udp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT"
+        commands += "$bin -t nat -A $CHAIN -p udp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT"
         // Redirect TCP DNS → local engine
-        commands += "iptables -t nat -A $CHAIN -p tcp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT"
+        commands += "$bin -t nat -A $CHAIN -p tcp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT"
         // Hook into OUTPUT chain
-        commands += "iptables -t nat -A OUTPUT -j $CHAIN"
+        commands += "$bin -t nat -A OUTPUT -j $CHAIN"
 
         if (blockDoT) {
             // filter table — DROP port 853 (DoT)
-            commands += "iptables -t filter -N $CHAIN_FILTER 2>/dev/null || true"
-            commands += "iptables -t filter -A $CHAIN_FILTER -m owner --uid-owner $uid -j RETURN"
+            commands += "$bin -t filter -N $CHAIN_FILTER 2>/dev/null || true"
+            commands += "$bin -t filter -A $CHAIN_FILTER -m owner --uid-owner $uid -j RETURN"
             for (wUid in whitelistUids) {
-                commands += "iptables -t filter -A $CHAIN_FILTER -m owner --uid-owner $wUid -j RETURN"
+                commands += "$bin -t filter -A $CHAIN_FILTER -m owner --uid-owner $wUid -j RETURN"
             }
-            commands += "iptables -t filter -A $CHAIN_FILTER -p tcp --dport 853 -j REJECT"
-            commands += "iptables -t filter -A OUTPUT -j $CHAIN_FILTER"
+            commands += "$bin -t filter -A $CHAIN_FILTER -p tcp --dport 853 -j REJECT"
+            commands += "$bin -t filter -A OUTPUT -j $CHAIN_FILTER"
         }
         return commands
     }
@@ -113,31 +125,34 @@ object IptablesManager {
     /**
      * Build the IPv6 setup commands (shared by root mode and Shizuku mode).
      * Attempted independently — many Android kernels lack ip6tables nat.
+     *
+     * @param bin6 The ip6tables binary to use (`ip6tables` or `ip6tables-nft`)
      */
     fun buildSetupCommandsIpv6(
         context: Context,
         blockDoT: Boolean = true,
-        whitelistUids: Collection<Int> = emptyList()
+        whitelistUids: Collection<Int> = emptyList(),
+        bin6: String = BIN_IPV6
     ): List<String> {
         val uid = context.applicationInfo.uid
         return buildList {
-            add("ip6tables -t nat -N $CHAIN 2>/dev/null || true")
+            add("$bin6 -t nat -N $CHAIN 2>/dev/null || true")
             // Skip our own app's traffic (prevents infinite loop)
-            add("ip6tables -t nat -A $CHAIN -m owner --uid-owner $uid -j RETURN")
+            add("$bin6 -t nat -A $CHAIN -m owner --uid-owner $uid -j RETURN")
             for (wUid in whitelistUids) {
-                add("ip6tables -t nat -A $CHAIN -m owner --uid-owner $wUid -j RETURN")
+                add("$bin6 -t nat -A $CHAIN -m owner --uid-owner $wUid -j RETURN")
             }
-            add("ip6tables -t nat -A $CHAIN -p udp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT")
-            add("ip6tables -t nat -A $CHAIN -p tcp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT")
-            add("ip6tables -t nat -A OUTPUT -j $CHAIN")
+            add("$bin6 -t nat -A $CHAIN -p udp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT")
+            add("$bin6 -t nat -A $CHAIN -p tcp --dport 53 -j REDIRECT --to-ports $LOCAL_DNS_PORT")
+            add("$bin6 -t nat -A OUTPUT -j $CHAIN")
             if (blockDoT) {
-                add("ip6tables -t filter -N $CHAIN_FILTER 2>/dev/null || true")
-                add("ip6tables -t filter -A $CHAIN_FILTER -m owner --uid-owner $uid -j RETURN")
+                add("$bin6 -t filter -N $CHAIN_FILTER 2>/dev/null || true")
+                add("$bin6 -t filter -A $CHAIN_FILTER -m owner --uid-owner $uid -j RETURN")
                 for (wUid in whitelistUids) {
-                    add("ip6tables -t filter -A $CHAIN_FILTER -m owner --uid-owner $wUid -j RETURN")
+                    add("$bin6 -t filter -A $CHAIN_FILTER -m owner --uid-owner $wUid -j RETURN")
                 }
-                add("ip6tables -t filter -A $CHAIN_FILTER -p tcp --dport 853 -j REJECT")
-                add("ip6tables -t filter -A OUTPUT -j $CHAIN_FILTER")
+                add("$bin6 -t filter -A $CHAIN_FILTER -p tcp --dport 853 -j REJECT")
+                add("$bin6 -t filter -A OUTPUT -j $CHAIN_FILTER")
             }
         }
     }
@@ -145,24 +160,30 @@ object IptablesManager {
     /**
      * Build the teardown commands (shared by root mode and Shizuku mode):
      * remove all Hikari AdBlock iptables chains and restore Private DNS.
+     *
+     * @param bin The iptables binary to use (`iptables` or `iptables-nft`)
+     * @param bin6 The ip6tables binary to use
      */
-    fun buildTeardownCommands(): List<String> = listOf(
+    fun buildTeardownCommands(
+        bin: String = BIN_IPV4,
+        bin6: String = BIN_IPV6
+    ): List<String> = listOf(
         // IPv4 nat chain
-        "iptables -t nat -D OUTPUT -j $CHAIN 2>/dev/null",
-        "iptables -t nat -F $CHAIN 2>/dev/null",
-        "iptables -t nat -X $CHAIN 2>/dev/null",
+        "$bin -t nat -D OUTPUT -j $CHAIN 2>/dev/null",
+        "$bin -t nat -F $CHAIN 2>/dev/null",
+        "$bin -t nat -X $CHAIN 2>/dev/null",
         // IPv4 filter chain (DoT blocking)
-        "iptables -t filter -D OUTPUT -j $CHAIN_FILTER 2>/dev/null",
-        "iptables -t filter -F $CHAIN_FILTER 2>/dev/null",
-        "iptables -t filter -X $CHAIN_FILTER 2>/dev/null",
+        "$bin -t filter -D OUTPUT -j $CHAIN_FILTER 2>/dev/null",
+        "$bin -t filter -F $CHAIN_FILTER 2>/dev/null",
+        "$bin -t filter -X $CHAIN_FILTER 2>/dev/null",
         // IPv6 nat chain
-        "ip6tables -t nat -D OUTPUT -j $CHAIN 2>/dev/null",
-        "ip6tables -t nat -F $CHAIN 2>/dev/null",
-        "ip6tables -t nat -X $CHAIN 2>/dev/null",
+        "$bin6 -t nat -D OUTPUT -j $CHAIN 2>/dev/null",
+        "$bin6 -t nat -F $CHAIN 2>/dev/null",
+        "$bin6 -t nat -X $CHAIN 2>/dev/null",
         // IPv6 filter chain (DoT blocking)
-        "ip6tables -t filter -D OUTPUT -j $CHAIN_FILTER 2>/dev/null",
-        "ip6tables -t filter -F $CHAIN_FILTER 2>/dev/null",
-        "ip6tables -t filter -X $CHAIN_FILTER 2>/dev/null",
+        "$bin6 -t filter -D OUTPUT -j $CHAIN_FILTER 2>/dev/null",
+        "$bin6 -t filter -F $CHAIN_FILTER 2>/dev/null",
+        "$bin6 -t filter -X $CHAIN_FILTER 2>/dev/null",
         // Restore Android Private DNS to automatic mode
         "settings put global private_dns_mode opportunistic",
     )
@@ -248,7 +269,7 @@ object IptablesManager {
      */
     fun isActive(): Boolean {
         val result = Shell.cmd(
-            "iptables -t nat -L OUTPUT -n 2>/dev/null | grep $CHAIN"
+            "$BIN_IPV4 -t nat -L OUTPUT -n 2>/dev/null | grep $CHAIN"
         ).exec()
         return result.out.any { it.contains(CHAIN) }
     }

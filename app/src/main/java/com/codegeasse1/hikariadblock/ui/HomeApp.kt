@@ -76,6 +76,8 @@ import com.codegeasse1.hikariadblock.ui.statistics.StatisticsScreen
 import com.codegeasse1.hikariadblock.ui.whitelist.AppWhitelistScreen
 import com.codegeasse1.hikariadblock.ui.wireguard.WireGuardEditScreen
 import com.codegeasse1.hikariadblock.ui.wireguard.WireGuardImportScreen
+import com.codegeasse1.hikariadblock.service.ShizukuProxyService
+import com.codegeasse1.hikariadblock.ui.dialog.ShizukuBlockedDialog
 import org.koin.compose.koinInject
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -111,6 +113,16 @@ fun HomeApp(
         BottomBarScreen.Settings
     )
     var showBottomBar by rememberSaveable { mutableStateOf(true) }
+
+    // Surface an immediate, actionable error when the device blocks shell
+    // iptables on every backend — instead of an endless "Connecting…".
+    val shizukuBlocked by ShizukuProxyService.iptablesBlocked.collectAsStateWithLifecycle(
+        initialValue = false,
+    )
+    if (shizukuBlocked) {
+        ShizukuBlockedDialog(onDismiss = { ShizukuProxyService.dismissIptablesBlocked() })
+    }
+
     Scaffold(
         bottomBar = {
             if (!showBottomBar) return@Scaffold
