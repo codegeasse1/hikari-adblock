@@ -1,7 +1,10 @@
 package com.codegeasse1.hikariadblock.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -11,6 +14,9 @@ import com.codegeasse1.hikariadblock.ui.data.SplashKey
 import com.codegeasse1.hikariadblock.ui.dialog.VPNConflictDialog
 import com.codegeasse1.hikariadblock.ui.onboarding.OnboardingScreen
 import com.codegeasse1.hikariadblock.ui.splash.SplashScreen
+import com.codegeasse1.hikariadblock.ui.update.UpdateAvailableDialog
+import com.codegeasse1.hikariadblock.utils.AppUpdateManager
+import org.koin.compose.koinInject
 
 
 @Composable
@@ -22,9 +28,29 @@ fun HikariAdBlockApp(
     onShowVpnConflictDialog: () -> Unit = {},
 ) {
 
+    val updateManager: AppUpdateManager = koinInject()
+    val updateInfo by updateManager.updateInfo.collectAsStateWithLifecycle()
+    val installState by updateManager.installState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        updateManager.checkForUpdates(manual = false)
+    }
+
     if (showVpnConflictDialog) {
         VPNConflictDialog(
             onDismissVpnConflictDialog = onDismissVpnConflictDialog,
+        )
+    }
+
+    updateInfo?.let { info ->
+        UpdateAvailableDialog(
+            version = info.version,
+            changelog = info.changelog,
+            installState = installState,
+            onUpdate = { updateManager.downloadAndInstall() },
+            onRetryInstall = { updateManager.retryInstall() },
+            onViewRelease = { updateManager.openReleasePage() },
+            onDismiss = { updateManager.dismiss() },
         )
     }
 

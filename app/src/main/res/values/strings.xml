@@ -571,4 +571,20 @@
     <string name="home_connecting_desc_shizuku">Establishing Shizuku Proxy…</string>
     <string name="home_disconnecting_desc_shizuku">Stopping Shizuku Proxy…</string>
     <string name="log_record_logs">Record Logs</string>
+    <string name="update_check_title">Check for Updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You\'re up to date</string>
+    <string name="update_check_failed">Couldn\'t check for updates</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">Hikari AdBlock %1$s is now available.</string>
+    <string name="update_changelog_title">What\'s new</string>
+    <string name="update_now">Update now</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_downloading_progress">Downloading… %1$d%%</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_install">Install</string>
+    <string name="update_allow_installs">Allow Hikari AdBlock to install unknown apps, then tap Install.</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_view_release">Release page</string>
+    <string name="update_later">Later</string>
 </resources>

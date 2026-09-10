@@ -73,6 +73,7 @@ class AppPreferences(private val context: Context) {
         private val KEY_PAUSED_BY_TRUSTED = booleanPreferencesKey("paused_by_trusted")
         private val KEY_PAUSED_TRUSTED_SSID = stringPreferencesKey("paused_trusted_ssid")
         private val KEY_RECORD_DNS_LOGS = booleanPreferencesKey("record_dns_logs")
+        private val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
 
         const val ROUTING_MODE_DIRECT = "direct"
         const val ROUTING_MODE_WIREGUARD = "wireguard"
@@ -327,6 +328,11 @@ class AppPreferences(private val context: Context) {
 
     val hideFromRecents: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_HIDE_FROM_RECENTS] ?: false
+    }
+
+    /** Version the user dismissed from the in-app update dialog. */
+    val dismissedUpdateVersion: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_DISMISSED_UPDATE_VERSION] ?: ""
     }
 
     val splitDnsZones: Flow<String> = context.dataStore.data.map { prefs ->
@@ -758,6 +764,12 @@ class AppPreferences(private val context: Context) {
     suspend fun setHideFromRecents(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_HIDE_FROM_RECENTS] = enabled
+        }
+    }
+
+    suspend fun setDismissedUpdateVersion(version: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_DISMISSED_UPDATE_VERSION] = version
         }
     }
 

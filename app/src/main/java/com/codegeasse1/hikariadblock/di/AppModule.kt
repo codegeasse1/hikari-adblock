@@ -5,6 +5,7 @@ import com.codegeasse1.hikariadblock.data.AppDatabase
 import com.codegeasse1.hikariadblock.data.datastore.AppPreferences
 import com.codegeasse1.hikariadblock.data.entities.ProfileManager
 import com.codegeasse1.hikariadblock.data.remote.FilterDownloadManager
+import com.codegeasse1.hikariadblock.data.remote.AppUpdateChecker
 import com.codegeasse1.hikariadblock.data.remote.api.CustomFilterApi
 import com.codegeasse1.hikariadblock.data.repository.CustomFilterManager
 import com.codegeasse1.hikariadblock.data.repository.FilterListRepository
@@ -27,6 +28,8 @@ import com.codegeasse1.hikariadblock.ui.splash.SplashViewModel
 import com.codegeasse1.hikariadblock.ui.wireguard.WireGuardEditViewModel
 import com.codegeasse1.hikariadblock.ui.wireguard.WireGuardImportViewModel
 import com.codegeasse1.hikariadblock.ui.httpsfiltering.HttpsFilteringViewModel
+import com.codegeasse1.hikariadblock.utils.ApkDownloadInstaller
+import com.codegeasse1.hikariadblock.utils.AppUpdateManager
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.engine.cio.endpoint
@@ -83,6 +86,11 @@ val appModule = module {
 
     // Preferences
     single { AppPreferences(androidContext()) }
+
+    // In-app updater (GitHub releases -> download -> package installer)
+    single { AppUpdateChecker(get()) }
+    single { ApkDownloadInstaller(androidContext(), get()) }
+    single { AppUpdateManager(androidContext(), get(), get(), get()) }
 
     // Repository
     single { FilterDownloadManager(androidContext(), get()) }

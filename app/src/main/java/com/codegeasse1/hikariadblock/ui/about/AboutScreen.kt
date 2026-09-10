@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,11 +48,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codegeasse1.hikariadblock.BuildConfig
 import com.codegeasse1.hikariadblock.R
 import com.codegeasse1.hikariadblock.ui.about.component.AboutLinkItem
 import com.codegeasse1.hikariadblock.ui.theme.DarkBackground
 import com.codegeasse1.hikariadblock.ui.theme.TextSecondary
+import com.codegeasse1.hikariadblock.utils.AppUpdateManager
+import com.codegeasse1.hikariadblock.utils.UpdateCheckOutcome
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +65,8 @@ fun AboutScreen(
     onNavigateBack: () -> Unit = { }
 ) {
     val context = LocalContext.current
+    val updateManager: AppUpdateManager = koinInject()
+    val updateOutcome by updateManager.checkOutcome.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -175,6 +183,18 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Links
+            AboutLinkItem(
+                icon = Icons.Filled.SystemUpdate,
+                title = stringResource(R.string.update_check_title),
+                subtitle = when (updateOutcome) {
+                    UpdateCheckOutcome.CHECKING -> stringResource(R.string.update_checking)
+                    UpdateCheckOutcome.UP_TO_DATE -> stringResource(R.string.update_up_to_date)
+                    UpdateCheckOutcome.FAILED -> stringResource(R.string.update_check_failed)
+                    else -> null
+                },
+                onClick = { updateManager.checkForUpdates(manual = true) }
+            )
+
             AboutLinkItem(
                 icon = Icons.Filled.Code,
                 title = stringResource(R.string.about_github),
