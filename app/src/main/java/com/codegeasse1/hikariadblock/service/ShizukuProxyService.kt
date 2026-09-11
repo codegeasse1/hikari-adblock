@@ -99,6 +99,18 @@ class ShizukuProxyService : Service() {
             _iptablesBlocked.value = false
         }
 
+        /**
+         * Flag shell-level netfilter as blocked from outside the service (e.g.
+         * a pre-flight probe run by MainActivity/SettingsViewModel before the
+         * service is ever started). The UI reacts to this exactly like the
+         * in-service detection, so the user gets the clear error dialog and the
+         * one-tap "Switch to Direct (VPN) mode" option instead of an endless
+         * "Connecting…".
+         */
+        fun reportIptablesBlocked() {
+            _iptablesBlocked.value = true
+        }
+
         fun start(context: Context): Boolean {
             val intent = Intent(context, ShizukuProxyService::class.java).apply {
                 action = ACTION_START
@@ -303,6 +315,23 @@ class ShizukuProxyService : Service() {
 
         serviceScope.launch {
             try {
+                // 0. Fast-fail pre-flight probe. Callers already probe before
+                // starting us, but if we were started by an older path (or the
+                // probe raced a ROM that just changed its policy) detect the
+                // blocked netfilter here too, on this background thread, before
+                // spending a single network call on filters. One cheap command
+                // tells us whether every backend is denied.
+                if (ShizukuManager.isBinderAlive() &&
+                    ShizukuManager.hasPermission() &&
+                    ShizukuManager.probeNetfilterBlocked()
+                ) {
+                    Timber.e("Pre-flight probe: device blocks shell iptables on all backends")
+                    stopProxy()
+                    showIptablesBlockedNotification()
+                    _iptablesBlocked.value = true
+                    return@launch
+                }
+
                 // 1. Load filters (same as VPN mode). Bounded so a slow or
                 // offline network can't leave us stuck in STARTING forever.
                 val filterLoadOk = withTimeoutOrNull(FILTER_LOAD_TIMEOUT_MS) {
@@ -374,7 +403,16 @@ class ShizukuProxyService : Service() {
                 // When the device blocks shell netfilter access on every
                 // backend, retrying is pointless — bail out immediately with a
                 // clear, actionable error instead of looping 10 times.
-                var iptablesBlocked = false
+                // Post-grant pre-flight probe: now that the Shizuku permission
+                // may have just been granted, one cheap command tells us
+                // whether netfilter is denied — fail fast instead of burning
+                // through the entire retry budget first.
+                var iptablesBlocked = ShizukuManager.isBinderAlive() &&
+                    ShizukuManager.hasPermission() &&
+                    ShizukuManager.probeNetfilterBlocked()
+                if (iptablesBlocked) {
+                    Timber.e("Post-grant probe: device blocks shell iptables on all backends")
+                }
                 while (!proxyStarted && !iptablesBlocked && retryManager.shouldRetry()) {
                     // Shizuku must be running and permission granted for
                     // shell-level iptables. Both are re-checked on every

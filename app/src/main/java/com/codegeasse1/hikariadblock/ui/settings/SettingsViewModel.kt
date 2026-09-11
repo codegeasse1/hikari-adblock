@@ -209,7 +209,15 @@ class SettingsViewModel(
 
             if (ShizukuManager.hasPermission()) {
                 if (shizukuToggleDesired == true) {
-                    applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+                    // Pre-flight probe: fail fast with the clear error dialog
+                    // (and its one-tap "Switch to Direct (VPN) mode" action)
+                    // instead of applying Shizuku mode on a device whose
+                    // ROM/kernel denies shell iptables on every backend.
+                    if (ShizukuManager.probeNetfilterBlocked()) {
+                        ShizukuProxyService.reportIptablesBlocked()
+                    } else {
+                        applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+                    }
                 }
                 return@launch
             }
@@ -228,11 +236,20 @@ class SettingsViewModel(
             val granted = ShizukuManager.requestPermissionAndWait()
 
             if (granted && shizukuToggleDesired == true) {
-                applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
-                if (!protectionRunning) {
-                    // Nothing was running, so the mode is only selected — there
-                    // is no foreground service to (re)start.
+                // Pre-flight probe: the grant just arrived, so check now
+                // whether the ROM/kernel actually allows shell netfilter. If
+                // not, surface the clear error dialog rather than entering a
+                // mode that can never work on this device.
+                if (ShizukuManager.probeNetfilterBlocked()) {
                     ShizukuManager.pendingEnable = false
+                    ShizukuProxyService.reportIptablesBlocked()
+                } else {
+                    applyRoutingMode(AppPreferences.ROUTING_MODE_SHIZUKU)
+                    if (!protectionRunning) {
+                        // Nothing was running, so the mode is only selected — there
+                        // is no foreground service to (re)start.
+                        ShizukuManager.pendingEnable = false
+                    }
                 }
             } else if (!granted) {
                 ShizukuManager.pendingEnable = false

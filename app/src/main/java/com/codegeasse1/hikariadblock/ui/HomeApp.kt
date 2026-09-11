@@ -84,7 +84,8 @@ import org.koin.compose.koinInject
 @Composable
 fun HomeApp(
     onRequestVpnPermission: () -> Unit = {},
-    onShowVpnConflictDialog: () -> Unit = {}
+    onShowVpnConflictDialog: () -> Unit = {},
+    onSwitchToDirectMode: () -> Unit = {}
 ) {
     val appPrefs: AppPreferences = koinInject()
     val showBottomNavLabels by appPrefs.showBottomNavLabels.collectAsStateWithLifecycle(
@@ -120,7 +121,13 @@ fun HomeApp(
         initialValue = false,
     )
     if (shizukuBlocked) {
-        ShizukuBlockedDialog(onDismiss = { ShizukuProxyService.dismissIptablesBlocked() })
+        ShizukuBlockedDialog(
+            onDismiss = { ShizukuProxyService.dismissIptablesBlocked() },
+            onSwitchToDirect = {
+                ShizukuProxyService.dismissIptablesBlocked()
+                onSwitchToDirectMode()
+            }
+        )
     }
 
     Scaffold(

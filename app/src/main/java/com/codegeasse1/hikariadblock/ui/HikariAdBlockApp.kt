@@ -26,6 +26,7 @@ fun HikariAdBlockApp(
     showVpnConflictDialog: Boolean = false,
     onDismissVpnConflictDialog: () -> Unit = {},
     onShowVpnConflictDialog: () -> Unit = {},
+    onSwitchToDirectMode: () -> Unit = {},
 ) {
 
     val updateManager: AppUpdateManager = koinInject()
@@ -83,7 +84,8 @@ fun HikariAdBlockApp(
             entry<HomeAppKey> {
                 HomeApp(
                     onRequestVpnPermission = onRequestVpnPermission,
-                    onShowVpnConflictDialog = onShowVpnConflictDialog
+                    onShowVpnConflictDialog = onShowVpnConflictDialog,
+                    onSwitchToDirectMode = onSwitchToDirectMode
                 )
             }
 

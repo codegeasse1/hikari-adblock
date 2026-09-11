@@ -533,6 +533,7 @@
     <string name="shizuku_iptables_blocked_text">Your device blocks shell iptables — use the root backend of Shizuku or switch to Direct (VPN) mode.</string>
     <string name="shizuku_iptables_blocked_dialog_title">Shizuku mode blocked by this device</string>
     <string name="shizuku_iptables_blocked_dialog_desc">Your device blocks shell iptables, so the DNS redirect can\'t be applied through Shizuku on this ROM. Use the root backend of Shizuku, or switch to Direct (VPN) mode in Settings.</string>
+    <string name="shizuku_blocked_switch_direct">Switch to Direct (VPN) mode</string>
     <string name="private_dns_warning_title">Private DNS is on</string>
     <string name="private_dns_warning_text">Android Private DNS bypasses Hikari AdBlock, so filtering may not apply. Set Private DNS to Off or Automatic in system settings.</string>
     <string name="github_link" translatable="false">https://github.com/codegeasse1/hikari-adblock</string>

@@ -19,6 +19,7 @@ import com.codegeasse1.hikariadblock.R
 fun ShizukuBlockedDialog(
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit,
+    onSwitchToDirect: () -> Unit,
 ) {
     AlertDialog(
         containerColor = MaterialTheme.colorScheme.background,
@@ -31,6 +32,11 @@ fun ShizukuBlockedDialog(
             Text(text = stringResource(R.string.shizuku_iptables_blocked_dialog_desc))
         },
         confirmButton = {
+            TextButton(onClick = onSwitchToDirect) {
+                Text(stringResource(R.string.shizuku_blocked_switch_direct))
+            }
+        },
+        dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.ok))
             }

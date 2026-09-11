@@ -118,7 +118,8 @@ class MainActivity : ComponentActivity() {
                     showVpnConflictDialog = _showVpnConflictDialog.value,
                     onDismissVpnConflictDialog = { _showVpnConflictDialog.value = false },
                     onShowVpnConflictDialog = { _showVpnConflictDialog.value = true },
-                    onRequestVpnPermission = { handleVpnToggle() }
+                    onRequestVpnPermission = { handleVpnToggle() },
+                    onSwitchToDirectMode = { switchToDirectMode() }
                 )
             }
         }
@@ -155,6 +156,15 @@ class MainActivity : ComponentActivity() {
                 return@launch
             }
             if (!ShizukuManager.isBinderAlive() || !ShizukuManager.hasPermission()) return@launch
+            // Pre-flight probe: if the ROM/kernel denies shell netfilter access
+            // on every backend, starting the service would only burn the whole
+            // retry budget before failing. Surface the clear, actionable error
+            // now instead.
+            if (ShizukuManager.probeNetfilterBlocked()) {
+                ShizukuManager.pendingEnable = false
+                ShizukuProxyService.reportIptablesBlocked()
+                return@launch
+            }
             withContext(Dispatchers.Main) {
                 if (ShizukuProxyService.start(this@MainActivity)) {
                     ShizukuManager.pendingEnable = false
@@ -262,10 +272,18 @@ class MainActivity : ComponentActivity() {
                         requestVpnPermission()
                     }
                 } else if (ShizukuManager.hasPermission()) {
-                    ShizukuManager.pendingEnable = true
-                    withContext(Dispatchers.Main) {
-                        if (ShizukuProxyService.start(this@MainActivity)) {
-                            ShizukuManager.pendingEnable = false
+                    // Pre-flight probe: fail fast with the clear error dialog
+                    // instead of ever starting the service on a device whose
+                    // ROM/kernel denies shell iptables on every backend.
+                    if (ShizukuManager.probeNetfilterBlocked()) {
+                        ShizukuManager.pendingEnable = false
+                        ShizukuProxyService.reportIptablesBlocked()
+                    } else {
+                        ShizukuManager.pendingEnable = true
+                        withContext(Dispatchers.Main) {
+                            if (ShizukuProxyService.start(this@MainActivity)) {
+                                ShizukuManager.pendingEnable = false
+                            }
                         }
                     }
                 } else {
@@ -311,6 +329,24 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     requestVpnPermission()
                 }
+            }
+        }
+    }
+
+    /**
+     * One-tap recovery offered by the "Shizuku mode blocked" dialog: leave
+     * Shizuku mode, switch the stored routing mode to Direct (VPN), and start
+     * protection through the VPN service instead — so the user still gets ad
+     * blocking even though their ROM/kernel forbids shell netfilter access.
+     */
+    private fun switchToDirectMode() {
+        ShizukuManager.pendingEnable = false
+        val appPrefs: AppPreferences = getKoin().get()
+        lifecycleScope.launch(Dispatchers.IO) {
+            appPrefs.setRoutingMode(AppPreferences.ROUTING_MODE_DIRECT)
+            ShizukuProxyService.stop(applicationContext)
+            withContext(Dispatchers.Main) {
+                handleVpnToggle()
             }
         }
     }

@@ -268,6 +268,10 @@ object ShizukuManager {
     private class FirewallBackend(
         val label: String,
         val probeCommand: String,
+        /** Cheap read-only netfilter access check used by the pre-flight probe.
+         *  Deliberately does NOT suppress stderr, so a permission refusal is
+         *  visible in the output instead of looking like an empty table. */
+        val accessProbeCommand: String,
         val setupCommands: (Context, Boolean, Collection<Int>) -> List<String>,
         val teardownCommands: () -> List<String>,
         val activeCheckCommand: String,
@@ -278,6 +282,7 @@ object ShizukuManager {
         FirewallBackend(
             label = "iptables-legacy",
             probeCommand = binaryProbe(IptablesManager.BIN_IPV4),
+            accessProbeCommand = "${IptablesManager.BIN_IPV4} -t nat -L OUTPUT -n",
             setupCommands = { ctx, blockDoT, wl ->
                 IptablesManager.buildSetupCommandsIpv4(ctx, blockDoT, wl, bin = IptablesManager.BIN_IPV4) +
                     IptablesManager.buildSetupCommandsIpv6(ctx, blockDoT, wl, bin6 = IptablesManager.BIN_IPV6)
@@ -291,6 +296,7 @@ object ShizukuManager {
         FirewallBackend(
             label = "iptables-nft",
             probeCommand = binaryProbe(IptablesManager.BIN_NFT_IPV4),
+            accessProbeCommand = "${IptablesManager.BIN_NFT_IPV4} -t nat -L OUTPUT -n",
             setupCommands = { ctx, blockDoT, wl ->
                 IptablesManager.buildSetupCommandsIpv4(ctx, blockDoT, wl, bin = IptablesManager.BIN_NFT_IPV4) +
                     IptablesManager.buildSetupCommandsIpv6(ctx, blockDoT, wl, bin6 = IptablesManager.BIN_NFT_IPV6)
@@ -304,6 +310,7 @@ object ShizukuManager {
         FirewallBackend(
             label = "nftables",
             probeCommand = binaryProbe(NftablesManager.BIN),
+            accessProbeCommand = "${NftablesManager.BIN} list tables",
             setupCommands = { ctx, blockDoT, wl ->
                 NftablesManager.buildSetupCommands(ctx, blockDoT, wl)
             },
@@ -416,6 +423,34 @@ object ShizukuManager {
     /** True if a backend's binary exists on the device (checked through Shizuku's shell). */
     private fun binaryExists(backend: FirewallBackend): Boolean =
         exec(backend.probeCommand).ok
+
+    /**
+     * Cheap pre-flight probe used when Shizuku mode is selected or started.
+     *
+     * Runs ONE read-only netfilter command per installed backend and reports
+     * true only when every backend that exists on the device refuses it with a
+     * permission error. Returns false the moment a backend answers without a
+     * refusal (or none is installed), so a working device is never pre-empted.
+     *
+     * Lets the UI say "this ROM/kernel blocks shell iptables" immediately,
+     * instead of loading filters and burning the full retry budget first.
+     * MUST be called from a background thread, and only once the binder is
+     * alive and permission is granted (otherwise every probe just fails).
+     */
+    fun probeNetfilterBlocked(): Boolean {
+        var anyAvailable = false
+        for (backend in FIREWALL_BACKENDS) {
+            if (!binaryExists(backend)) continue
+            anyAvailable = true
+            val result = exec(backend.accessProbeCommand, logErrors = false)
+            if (!looksBlocked(result.output)) {
+                Timber.d("Shizuku pre-flight: ${backend.label} accessible — not blocked")
+                return false
+            }
+            Timber.d("Shizuku pre-flight: ${backend.label} refused by device")
+        }
+        return anyAvailable
+    }
 
     /** Check if our rules are active using a specific backend. */
     private fun isActive(backend: FirewallBackend): Boolean {
